@@ -1,11 +1,17 @@
 type User {
-  # Example field (placeholder)
-  exampleField: Int
+    id: Int
+    username: String
+    age: Int
+    email: String
+    handicape : Boolean
 }
 
 input CreateUserInput {
-  # Example field (placeholder)
-  exampleField: Int
+    id: Int
+    username: String
+    age: Int
+    email: String
+    handicape : Boolean
 }
 
 input UpdateUserInput {

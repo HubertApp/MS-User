@@ -10,10 +10,10 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
       isGlobal: true,
     }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
-      driver : ApolloDriver,
+      driver: ApolloDriver,
       playground: true,
       typePaths: ['./**/*.graphql'],
-  }),
+    }),
     UsersModule,
   ],
   controllers: [],
