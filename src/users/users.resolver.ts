@@ -14,20 +14,20 @@ export class UsersResolver {
   }
 
   @Query('users')
-  findAll() {
-    const users: User[] = this.usersService.findAll();
+  async findAll() {
+    const users: User[] = await this.usersService.findAll();
     return users;
   }
 
   @Query('user')
-  findOne(@Args('id') id: number) {
-    const user: User | string = this.usersService.findOne(id);
+  async findOne(@Args('id') id: number) {
+    const user: User | string = await this.usersService.findOne(id);
     return user;
   }
 
   @Mutation('updateUser')
-  update(@Args('updateUserInput') updateUserInput: UpdateUserInput) {
-    const message: string = this.usersService.update(
+  async update(@Args('updateUserInput') updateUserInput: UpdateUserInput) {
+    const message: string = await this.usersService.update(
       updateUserInput.id,
       updateUserInput,
     );
@@ -35,8 +35,8 @@ export class UsersResolver {
   }
 
   @Mutation('removeUser')
-  remove(@Args('id') id: number) {
-    const message: string = this.usersService.remove(id);
+  async remove(@Args('id') id: number) : Promise<string> {
+    const message: string = await this.usersService.remove(id);
     return message;
   }
 }
