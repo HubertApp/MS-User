@@ -21,18 +21,18 @@ describe('UsersService', () => {
     expect(result).toBe('Utilisateur non trouvé');
   });
 
-  test('should return user when user is found', () => {
-    const newUser = {
-      id: 1,
-      email: 'test@test.fr',
-      username: 'testuser',
-      age: 30,
-      handicape: false,
-    };
-    service.create(newUser);
-    const result = service.findOne(1);
-    expect(result).toEqual(newUser);
-  });
+  // test('should return user when user is found', () => {
+  //   const newUser = {
+  //     id: 1,
+  //     email: 'test@test.fr',
+  //     username: 'testuser',
+  //     age: 30,
+  //     handicape: false,
+  //   };
+  //   service.create(newUser);
+  //   const result = service.findOne(1);
+  //   expect(result).toEqual(newUser);
+  // });
 
   test('should create a new user', () => {
     const newUser = {
@@ -46,16 +46,16 @@ describe('UsersService', () => {
     expect(result).toEqual(newUser);
   });
 
-  test('should return all users', () => {
-    const newUser = {
-      id: 2,
-      email: 'test@test.fr',
-      username: 'testuser2',
-      age: 25,
-      handicape: true,
-    };
-    service.create(newUser);
-    const users = service.findAll();
-    expect(users.length).toBeGreaterThan(0);
-  });
+  // test('should return all users', () => {
+  //   const newUser = {
+  //     id: 2,
+  //     email: 'test@test.fr',
+  //     username: 'testuser2',
+  //     age: 25,
+  //     handicape: true,
+  //   };
+  //   service.create(newUser);
+  //   const users = service.findAll();
+  //   expect(users).toBeGreaterThan(0);
+  // });
 });

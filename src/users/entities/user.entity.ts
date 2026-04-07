@@ -1,7 +1,20 @@
+import { Directive, Field, ID, Int, ObjectType } from '@nestjs/graphql';
+
+@Directive('@key(fields: "googleId")')
+@ObjectType()
 export class User {
-  id: number;
-  username: string;
-  age: number;
+  @Field(() => ID)
+  googleId: string;
+
+  @Field({ nullable: true })
   email: string;
-  handicape: boolean;
+
+  @Field(() => Int)
+  age: number;
+
+  @Field({ nullable: true })
+  pseudo: string;
+
+  @Field({ nullable: true })
+  role: string;
 }

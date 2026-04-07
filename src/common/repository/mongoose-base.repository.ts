@@ -1,29 +1,32 @@
-import { Model, Document, HydratedDocument } from 'mongoose';
+import { Model, Document } from 'mongoose';
 import { IRepository } from '../interface/repository.interface';
 
-export abstract class MongooseBaseRepository<T extends Document> implements IRepository<T> {
+export abstract class MongooseBaseRepository<
+  T extends Document,
+> implements IRepository<T> {
   constructor(protected readonly model: Model<T>) {}
-
 
   async findAll(): Promise<T[]> {
     return this.model.find().exec();
   }
 
-  async findById(id: number): Promise<T | null> {
-    return this.model.findById(id).exec();
+  async findById(googleId: string): Promise<T | null> {
+    return this.model.findOne({ googleId }).exec();
   }
 
-  async create(item: any): Promise<T> {
-    const createdItem = new this.model(item);
-    return createdItem.save() as any;
+  async create(item: Partial<T>): Promise<T> {
+    const createdItem = await new this.model(item).save();
+    return createdItem;
   }
 
-  async update(id: number, item: Partial<T>): Promise<T | null> {
-    return this.model.findByIdAndUpdate(id, item, { new: true }).exec();
+  async update(googleId: string, item: Partial<T>): Promise<T | null> {
+    return this.model
+      .findOneAndUpdate({ googleId }, item, { new: true })
+      .exec();
   }
 
-  async delete(id: number): Promise<boolean> {
-    const result = await this.model.findByIdAndDelete(id).exec();
+  async delete(googleId: string): Promise<boolean> {
+    const result = await this.model.findOneAndDelete({ googleId }).exec();
     return result !== null;
   }
 }
