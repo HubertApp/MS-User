@@ -1,9 +1,10 @@
-import { CreateUserInput } from './create-user.input';
-import { PartialType } from '@nestjs/mapped-types';
-import { InputType, Field, Int } from '@nestjs/graphql';
+import { Field, Int, ID, ObjectType } from '@nestjs/graphql';
 
-@InputType()
-export class UpdateUserInput extends PartialType(CreateUserInput) {
+@ObjectType()
+export class GetUserResponse {
+  @Field(() => ID)
+  googleId?: string;
+
   @Field(() => String, { nullable: true })
   email?: string;
 
@@ -17,5 +18,8 @@ export class UpdateUserInput extends PartialType(CreateUserInput) {
   role?: string;
 
   @Field(() => Date, { nullable: true })
-  update_at?: Date;
+  created_at?: Date;
+
+  @Field(() => Date, { nullable: true })
+  updated_at?: Date;
 }

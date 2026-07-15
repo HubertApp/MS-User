@@ -7,74 +7,68 @@ import { FederatedAuthGuard } from './guards/federated-auth.guard';
 import { CurrentUser } from './decorator/current-user.decorator';
 import { User } from './entities/user.entity';
 import { Span } from 'nestjs-otel';
+import { GetUserResponse } from './dto/get-user.response';
 
-@Resolver(() => User)
+@Resolver(() => GetUserResponse)
 export class UsersResolver {
   constructor(private readonly usersService: UsersService) {}
 
-  @Query(() => User)
+  @Query(() => GetUserResponse)
   @Span('getMe_resolver')
   @UseGuards(FederatedAuthGuard)
-  async getMe(@CurrentUser() user: User) {
-    return {
-      googleId: user.googleId,
-      age: user.age,
-      email: user.email,
-      pseudo: user.pseudo,
-      role: user.role,
-    };
+  async getMe(
+    @CurrentUser() user: CreateUserInput,
+  ): Promise<GetUserResponse | boolean> {
+    const foundUser = await this.usersService.create(user);
+    return foundUser;
+  }
+
+  @Query(() => GetUserResponse)
+  @Span('getOne_resolver')
+  @UseGuards(FederatedAuthGuard)
+  async getOne(
+    @CurrentUser() user: CreateUserInput,
+  ): Promise<GetUserResponse | boolean> {
+    const foundUser = await this.usersService.findOne(user.googleId);
+    return foundUser;
   }
 
   @Directive('@inaccessible')
   @Span('createUser_resolver')
-  @Mutation(() => User)
+  @Mutation(() => GetUserResponse)
   async createUser(@Args('createUserInput') createUserInput: CreateUserInput) {
     return await this.usersService.create(createUserInput);
   }
 
-  @Query(() => [User], { name: 'users' })
+  @Query(() => [GetUserResponse])
   @Span('findAll_resolver')
   async findAll() {
     const users: User[] = await this.usersService.findAll();
     return users;
   }
-  @Query(() => User, { name: 'user' })
+  @Query(() => GetUserResponse)
+  @UseGuards(FederatedAuthGuard)
   @Span('findOne_resolver')
   async findOne(@Args('googleId') googleId: string) {
-    const user: User | string = await this.usersService.findOne(googleId);
+    const user: User | boolean = await this.usersService.findOne(googleId);
     return user;
   }
 
-  @Directive('@inaccessible')
   @Span('updateUser_resolver')
-  @Mutation(() => User)
-  async updateUser(@Args('updateUserInput') updateUserInput: UpdateUserInput) {
-    const message: string = await this.usersService.update(
-      updateUserInput.googleId,
-      updateUserInput,
-    );
-    return message;
+  @UseGuards(FederatedAuthGuard)
+  @Mutation(() => GetUserResponse)
+  async updateUser(
+    @CurrentUser() user: CreateUserInput,
+    @Args('updateUserInput') updateUserInput: UpdateUserInput,
+  ) {
+    return this.usersService.update(user.googleId, updateUserInput);
   }
 
-  @Directive('@inaccessible')
   @Span('removeUser_resolver')
-  @Mutation(() => User)
+  @UseGuards(FederatedAuthGuard)
+  @Mutation(() => String)
   async removeUser(@Args('googleId') googleId: string): Promise<string> {
     const message: string = await this.usersService.remove(googleId);
     return message;
-  }
-
-  @Mutation(() => String)
-  @Span('simpleMutation_resolver')
-  async simpleMutation(@Args('payload') payload: string) : Promise<string> {
-    console.log("===> RESOLVER ATTEINT !");
-    return 'Ceci est un test';
-  }
-
-  @Query(() => String)
-  @Span('simpleQuery_resolver')
-  async simpleQuery(){
-    console.log("===> RESOLVER ATTEINT !");
-    return 'Ceci est un test';
   }
 }

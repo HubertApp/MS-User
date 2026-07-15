@@ -6,20 +6,21 @@ import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentation
 import { GraphQLInstrumentation } from '@opentelemetry/instrumentation-graphql';
 
 export const otelSDK = new NodeSDK({
-
   traceExporter: new OTLPTraceExporter({
-    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://otel-collector:4317',
+    url:
+      process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://otel-collector:4317',
   }),
   metricReader: new PeriodicExportingMetricReader({
     exporter: new OTLPMetricExporter({
-      url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://otel-collector:4317',
+      url:
+        process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://otel-collector:4317',
     }),
   }),
   instrumentations: [
-    getNodeAutoInstrumentations(), 
+    getNodeAutoInstrumentations(),
     new GraphQLInstrumentation({
       mergeItems: true,
-      depth: 2, 
+      depth: 2,
     }),
   ],
 });

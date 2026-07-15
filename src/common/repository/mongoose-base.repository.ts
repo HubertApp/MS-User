@@ -10,7 +10,7 @@ export abstract class MongooseBaseRepository<
     return this.model.find().exec();
   }
 
-  async findById(googleId: string): Promise<T | null> {
+  async findById(googleId: string | undefined): Promise<T | null> {
     return this.model.findOne({ googleId }).exec();
   }
 
@@ -19,13 +19,16 @@ export abstract class MongooseBaseRepository<
     return createdItem;
   }
 
-  async update(googleId: string, item: Partial<T>): Promise<T | null> {
+  async update(
+    googleId: string | undefined,
+    item: Partial<T>,
+  ): Promise<T | null> {
     return this.model
       .findOneAndUpdate({ googleId }, item, { new: true })
       .exec();
   }
 
-  async delete(googleId: string): Promise<boolean> {
+  async delete(googleId: string | undefined): Promise<boolean> {
     const result = await this.model.findOneAndDelete({ googleId }).exec();
     return result !== null;
   }

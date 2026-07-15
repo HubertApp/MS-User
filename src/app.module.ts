@@ -9,16 +9,12 @@ import {
 import { MongooseModule } from '@nestjs/mongoose';
 import { OpenTelemetryModule } from 'nestjs-otel';
 
-
 @Module({
   imports: [
     OpenTelemetryModule.forRoot({
-     
       metrics: {
         hostMetrics: true,
       },
-      
-      
     }),
     ConfigModule.forRoot({
       isGlobal: true,

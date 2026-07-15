@@ -6,14 +6,12 @@ import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 export class FederatedAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const ctx = GqlExecutionContext.create(context).getContext();
-    const userId = ctx.req.headers['x-user-id'];
-    const userRole = ctx.req.headers['x-user-role'];
-    const userEmail = ctx.req.headers['x-user-email'];
-    const userPseudo = ctx.req.headers['x-user-pseudo'];
-    const userAge = ctx.req.headers['x-user-age'];
-    const authState = ctx.req.headers['x-auth-state'];
+    const headers = ctx.req.headers;
 
-    if (authState !== 'VALID') {
+    const authState = headers['x-auth-state'];
+    const userId = headers['x-user-id'];
+
+    if (authState && authState !== 'VALID') {
       throw new UnauthorizedException('Token invalide');
     }
 
@@ -22,12 +20,17 @@ export class FederatedAuthGuard implements CanActivate {
     }
 
     ctx.req.user = {
-      id: userId,
-      role: userRole,
-      email: userEmail,
-      pseudo: userPseudo,
-      age: userAge,
+      googleId: String(userId),
+      email: headers['x-user-email']
+        ? String(headers['x-user-email'])
+        : undefined,
+      pseudo: headers['x-user-pseudo']
+        ? String(headers['x-user-pseudo'])
+        : undefined,
+      role: headers['x-user-role'] ? String(headers['x-user-role']) : 'USER',
+      age: headers['x-user-age'] ? Number(headers['x-user-age']) : 0,
     };
+
     return true;
   }
 }
