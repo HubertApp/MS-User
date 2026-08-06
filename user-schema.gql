@@ -1,0 +1,49 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+input CreateUserInput {
+  age: Int
+  created_at: DateTime = "2026-08-06T09:54:04.314Z"
+  email: String
+  googleId: ID!
+  pseudo: String
+  role: String
+  updated_at: DateTime = "2026-08-06T09:54:04.314Z"
+}
+
+"""
+A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date-time format.
+"""
+scalar DateTime
+
+type GetUserResponse {
+  age: Int
+  created_at: DateTime
+  email: String
+  googleId: ID!
+  pseudo: String
+  role: String
+  updated_at: DateTime
+}
+
+type Mutation {
+  createUser(createUserInput: CreateUserInput!): GetUserResponse!
+  removeUser(googleId: String!): String!
+  updateUser(updateUserInput: UpdateUserInput!): String!
+}
+
+type Query {
+  findAll: [GetUserResponse!]!
+  findOne(googleId: String!): GetUserResponse!
+  getMe: GetUserResponse!
+  getOne: GetUserResponse!
+}
+
+input UpdateUserInput {
+  age: Int
+  email: String
+  pseudo: String
+  role: String
+  update_at: DateTime
+}
