@@ -13,7 +13,11 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         name: 'NOTIF_SERVICE',
         transport: Transport.RMQ,
         options: {
-          urls: [process.env.RABBITMQ_URL || 'amqp://null'],
+          // "rabbitmq" = nom du Service k8s (voir k8s/00-rabbitmq-notifications.yaml),
+          // celui que MS-notifications utilise déjà pour consommer cette
+          // même queue. RABBITMQ_URL n'est pas défini dans le manifeste de
+          // MS-User pour l'instant, donc c'est ce fallback qui sera utilisé.
+          urls: [process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672'],
           queue: 'notifications_queue',
           noAssert: true,
           queueOptions: {

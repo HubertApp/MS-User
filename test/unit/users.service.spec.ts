@@ -1,3 +1,4 @@
+import { of } from 'rxjs';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UsersService } from '../../src/users/users.service';
 import { UsersRepository } from '../../src/users/repository/users.repository';
@@ -42,7 +43,7 @@ const mockRepo = {
 };
 
 const mockNotifClient = {
-  emit: jest.fn(),
+  emit: jest.fn().mockReturnValue(of(undefined)),
 };
 
 describe('UsersService', () => {
@@ -50,6 +51,7 @@ describe('UsersService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockNotifClient.emit.mockReturnValue(of(undefined));
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -99,6 +101,45 @@ describe('UsersService', () => {
 
       expect(result).toEqual(existing);
       expect(mockRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('should emit user_created with user_id (not just email) so MS-notifications actually dispatches it', async () => {
+      const input = makeCreateInput();
+      const created = makeUser();
+
+      mockRepo.findById.mockResolvedValue(null);
+      mockRepo.create.mockResolvedValue(created);
+
+      await service.create(input);
+
+      expect(mockNotifClient.emit).toHaveBeenCalledTimes(1);
+      expect(mockNotifClient.emit).toHaveBeenCalledWith(
+        'user_created',
+        expect.objectContaining({ user_id: created.googleId, email: created.email }),
+      );
+    });
+
+    it('should never emit user_created when the user already existed (e.g. a repeat login)', async () => {
+      const input = makeCreateInput();
+      mockRepo.findById.mockResolvedValue(makeUser());
+
+      await service.create(input);
+
+      expect(mockNotifClient.emit).not.toHaveBeenCalled();
+    });
+
+    it('should still return the created user even if publishing user_created fails', async () => {
+      const input = makeCreateInput();
+      const created = makeUser();
+      mockRepo.findById.mockResolvedValue(null);
+      mockRepo.create.mockResolvedValue(created);
+      mockNotifClient.emit.mockImplementation(() => {
+        throw new Error('RabbitMQ down');
+      });
+
+      const result = await service.create(input);
+
+      expect(result).toEqual(created);
     });
 
     it('should set created_at and updated_at on new user', async () => {
