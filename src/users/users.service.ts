@@ -1,12 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { UsersRepository } from './repository/users.repository';
 import { User } from './entities/user.entity';
+import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: UsersRepository) {}
+  constructor(
+    private readonly usersRepository: UsersRepository,
+    @Inject('NOTIF_SERVICE') private readonly notifClient: ClientProxy,
+  ) {}
 
   async create(createUserInput: CreateUserInput) {
     const userExistent: User | boolean = await this.findOne(
@@ -18,6 +22,8 @@ export class UsersService {
       createUserInput.updated_at = new Date();
 
       const newUser: User = await this.usersRepository.create(createUserInput);
+
+      this.sendNotification(newUser);
       return newUser;
     }
 
@@ -57,5 +63,16 @@ export class UsersService {
   async remove(googleId: string): Promise<string> {
     await this.usersRepository.delete(googleId);
     return 'Utilisateur supprimé avec succès';
+  }
+
+  private sendNotification(user: any) {
+    const payload = {
+      email: user.email,
+      pseudo: user.pseudo,
+      subject: 'Bienvenue sur Hubert App !',
+      template: 'welcome',
+    };
+
+    this.notifClient.emit('user_created', payload);
   }
 }

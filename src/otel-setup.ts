@@ -7,13 +7,11 @@ import { GraphQLInstrumentation } from '@opentelemetry/instrumentation-graphql';
 
 export const otelSDK = new NodeSDK({
   traceExporter: new OTLPTraceExporter({
-    url:
-      process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
   }),
   metricReader: new PeriodicExportingMetricReader({
     exporter: new OTLPMetricExporter({
-      url:
-        process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+      url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
     }),
   }),
   instrumentations: [

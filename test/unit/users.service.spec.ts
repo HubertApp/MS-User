@@ -41,6 +41,10 @@ const mockRepo = {
   delete: jest.fn(),
 };
 
+const mockNotifClient = {
+  emit: jest.fn(),
+};
+
 describe('UsersService', () => {
   let service: UsersService;
 
@@ -51,6 +55,7 @@ describe('UsersService', () => {
       providers: [
         UsersService,
         { provide: UsersRepository, useValue: mockRepo },
+        { provide: 'NOTIF_SERVICE', useValue: mockNotifClient },
       ],
     }).compile();
 

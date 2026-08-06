@@ -61,7 +61,7 @@ describe('UsersResolver', () => {
       const result = await resolver.getMe(makeCurrentUser() as any);
 
       expect(result).toEqual(user);
-      
+
       expect(mockService.create).toHaveBeenCalledWith(
         expect.objectContaining({
           googleId: 'google-123',

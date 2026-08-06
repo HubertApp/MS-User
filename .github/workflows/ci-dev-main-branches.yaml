@@ -50,7 +50,7 @@ jobs:
       - name: Build and push Service User
         uses: docker/build-push-action@v6
         with:
-          context: ./MS-User
+          context: .
           push: true
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/service-user:latest
