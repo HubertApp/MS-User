@@ -4,24 +4,24 @@ import { UsersResolver } from './users.resolver';
 import { MongooseModule } from '@nestjs/mongoose';
 import { UserMongooseSchema, UserSchema } from './schema/user.schema';
 import { UsersRepository } from './repository/users.repository';
-// import { ClientsModule, Transport } from '@nestjs/microservices';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [
-    // ClientsModule.register([
-    //   {
-    //     name: 'NOTIF_SERVICE',
-    //     transport: Transport.RMQ,
-    //     options: {
-    //       urls: ['amqp://user:password@message-broker:5672'],
-    //       queue: 'notifications_queue',
-    //       noAssert: true,
-    //       queueOptions: {
-    //         durable: false,
-    //       },
-    //     },
-    //   },
-    // ]),
+    ClientsModule.register([
+      {
+        name: 'NOTIF_SERVICE',
+        transport: Transport.RMQ,
+        options: {
+          urls: [process.env.RABBITMQ_URL || 'amqp://null'],
+          queue: 'notifications_queue',
+          noAssert: true,
+          queueOptions: {
+            durable: false,
+          },
+        },
+      },
+    ]),
     MongooseModule.forFeature([
       { name: UserMongooseSchema.name, schema: UserSchema },
     ]),

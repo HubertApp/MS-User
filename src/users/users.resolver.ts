@@ -56,11 +56,11 @@ export class UsersResolver {
 
   @Span('updateUser_resolver')
   @UseGuards(FederatedAuthGuard)
-  @Mutation(() => GetUserResponse)
+  @Mutation(() => String)
   async updateUser(
     @CurrentUser() user: CreateUserInput,
     @Args('updateUserInput') updateUserInput: UpdateUserInput,
-  ) {
+  ): Promise<string> {
     return this.usersService.update(user.googleId, updateUserInput);
   }
 
