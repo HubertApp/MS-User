@@ -29,7 +29,30 @@ export class UsersService {
       return newUser;
     }
 
-    return userExistent;
+    return this.syncProfile(userExistent as User, createUserInput);
+  }
+
+  // Resynchronise pseudo/email/photo depuis Google à chaque login (appelé
+  // par getMe et createUser). age/role restent gérés côté app et ne sont
+  // jamais écrasés ici. Un champ absent de l'input (ex: photo via getMe,
+  // qui ne la transmet pas) n'efface pas la valeur déjà en base.
+  private async syncProfile(
+    existing: User,
+    input: CreateUserInput,
+  ): Promise<User> {
+    const patch: Partial<CreateUserInput> = {};
+    if (input.pseudo) patch.pseudo = input.pseudo;
+    if (input.email) patch.email = input.email;
+    if (input.photo) patch.photo = input.photo;
+
+    if (Object.keys(patch).length === 0) return existing;
+
+    patch.updated_at = new Date();
+    const updated = await this.usersRepository.update(
+      existing.googleId,
+      patch,
+    );
+    return updated ?? existing;
   }
 
   async findAll() {

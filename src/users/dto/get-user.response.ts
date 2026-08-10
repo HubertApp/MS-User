@@ -15,6 +15,9 @@ export class GetUserResponse {
   pseudo?: string;
 
   @Field(() => String, { nullable: true })
+  photo?: string;
+
+  @Field(() => String, { nullable: true })
   role?: string;
 
   @Field(() => Date, { nullable: true })

@@ -103,6 +103,44 @@ describe('UsersService', () => {
       expect(mockRepo.create).not.toHaveBeenCalled();
     });
 
+    it('should resync pseudo/email/photo on an existing user (repeat login)', async () => {
+      const input = makeCreateInput({
+        pseudo: 'newPseudo',
+        email: 'new@example.com',
+        photo: 'https://lh3.googleusercontent.com/a/photo.jpg',
+      });
+      const existing = makeUser({ pseudo: 'oldPseudo', email: 'old@example.com' });
+      const updated = makeUser({ ...existing, ...input });
+
+      mockRepo.findById.mockResolvedValue(existing);
+      mockRepo.update.mockResolvedValue(updated);
+
+      const result = await service.create(input);
+
+      expect(mockRepo.update).toHaveBeenCalledWith(
+        existing.googleId,
+        expect.objectContaining({
+          pseudo: 'newPseudo',
+          email: 'new@example.com',
+          photo: 'https://lh3.googleusercontent.com/a/photo.jpg',
+        }),
+      );
+      expect(result).toEqual(updated);
+    });
+
+    it('should not erase an existing photo when the input does not provide one (e.g. getMe)', async () => {
+      const input = makeCreateInput({ photo: undefined });
+      const existing = makeUser({ photo: 'https://lh3.googleusercontent.com/a/photo.jpg' });
+
+      mockRepo.findById.mockResolvedValue(existing);
+      mockRepo.update.mockResolvedValue({ ...existing, pseudo: input.pseudo });
+
+      await service.create(input);
+
+      const patch = mockRepo.update.mock.calls[0][1];
+      expect(patch.photo).toBeUndefined();
+    });
+
     it('should emit user_created with user_id (not just email) so MS-notifications actually dispatches it', async () => {
       const input = makeCreateInput();
       const created = makeUser();
