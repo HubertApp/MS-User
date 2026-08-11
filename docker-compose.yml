@@ -1,11 +1,17 @@
+# Nom de service unique : Compose ajoute toujours le nom de service comme alias
+# DNS, et MS-Admin declare aussi un service « mongodb » sur hubert-network. Avec
+# un alias partage, Docker resout en round-robin : ce service (sans auth) et
+# celui de MS-Admin (avec auth) se repondaient mutuellement une fois sur deux.
 services:
-  mongodb:
+  mongodb-user:
     image: mongo:latest
     container_name: mongodb_container
     ports:
-      - "27017:27017"
+      - "27003:27017"
     volumes:
       - mongo_data:/data/db
+    networks:
+      - hubert-network
 
   mongo-express:
     image: mongo-express:latest
@@ -14,23 +20,31 @@ services:
     ports:
       - "8081:8081"
     environment:
-      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_MONGODB_SERVER=mongodb-user
       - ME_CONFIG_BASICAUTH_USERNAME=${MONGO_USER}
       - ME_CONFIG_BASICAUTH_PASSWORD=${MONGO_PASS}
     depends_on:
-      - mongodb
+      - mongodb-user
+    networks:
+      - hubert-network
 
   service-user:
     build: .
     container_name: service_user
     environment:
-      - MONGO_URL=mongodb://mongodb:27017/hubertapp_users
+      - MONGO_URL=mongodb://mongodb-user:27017/hubertapp_users
     depends_on:
-      - mongodb
+      - mongodb-user
     ports:
       - "3001:3001"
+    networks:
+      - hubert-network
 
 volumes:
   mongo_data:
 
+
+networks:
+  hubert-network:
+    external: true
 
