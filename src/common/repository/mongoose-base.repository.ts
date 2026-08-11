@@ -23,8 +23,7 @@ export abstract class MongooseBaseRepository<
     googleId: string | undefined,
     item: Partial<T>,
   ): Promise<T | null> {
-    // $set : sans ça, Mongo remplace tout le document par "item" (les champs
-    // absents de "item" seraient perdus) au lieu de ne mettre à jour que ceux fournis.
+    // $set nécessaire, voir ARCHITECTURE.md §3.
     return this.model
       .findOneAndUpdate({ googleId }, { $set: item }, { new: true })
       .exec();

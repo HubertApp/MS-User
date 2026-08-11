@@ -32,10 +32,7 @@ export class UsersService {
     return this.syncProfile(userExistent as User, createUserInput);
   }
 
-  // Resynchronise pseudo/email/photo depuis Google à chaque login (appelé
-  // par getMe et createUser). age/role restent gérés côté app et ne sont
-  // jamais écrasés ici. Un champ absent de l'input (ex: photo via getMe,
-  // qui ne la transmet pas) n'efface pas la valeur déjà en base.
+  // Détail du comportement : voir README.md "Modèle utilisateur".
   private async syncProfile(
     existing: User,
     input: CreateUserInput,
@@ -67,7 +64,6 @@ export class UsersService {
     }
 
     return false;
-    // throw new NotFoundException(`Utilisateur avec l'ID Google ${googleId} introuvable.`);
   }
 
   async update(
@@ -85,15 +81,12 @@ export class UsersService {
     return 'Utilisateur non trouvé';
   }
 
-  async remove(googleId: string): Promise<string> {
+  async remove(googleId: string | undefined): Promise<string> {
     await this.usersRepository.delete(googleId);
     return 'Utilisateur supprimé avec succès';
   }
 
-  // MS-notifications (EventPattern 'user_created') ne déclenche l'envoi que
-  // si data.user_id ET data.email sont présents — voir
-  // ms-notifications.controller.ts. user_id est donc obligatoire ici, pas
-  // juste un bonus.
+  // Payload requis, voir ARCHITECTURE.md §1.
   private sendNotification(user: any) {
     if (!user.googleId || !user.email) return;
 
@@ -105,23 +98,20 @@ export class UsersService {
       template: 'welcome',
     };
 
-    // emit() renvoie un Observable froid : sans subscribe(), rien n'est
-    // publié du tout (piège classique NestJS/RxJS). Fire-and-forget : une
-    // erreur de publication ne doit jamais faire échouer la création du
-    // compte, déjà persisté à ce stade.
+    // emit() est un Observable froid, voir ARCHITECTURE.md §1.
     try {
       this.notifClient.emit('user_created', payload).subscribe({
         error: (err) =>
           this.logger.warn(
             `Échec de publication de user_created pour ${user.googleId} : ${
-              err instanceof Error ? err.message : String(err)
+              err instanceof Error ? err.message : JSON.stringify(err)
             }`,
           ),
       });
     } catch (err) {
       this.logger.warn(
         `Échec de publication de user_created pour ${user.googleId} : ${
-          err instanceof Error ? err.message : String(err)
+          err instanceof Error ? err.message : JSON.stringify(err)
         }`,
       );
     }

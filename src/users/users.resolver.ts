@@ -64,11 +64,12 @@ export class UsersResolver {
     return this.usersService.update(user.googleId, updateUserInput);
   }
 
+  // Pas d'argument googleId, voir ARCHITECTURE.md §2.
   @Span('removeUser_resolver')
   @UseGuards(FederatedAuthGuard)
   @Mutation(() => String)
-  async removeUser(@Args('googleId') googleId: string): Promise<string> {
-    const message: string = await this.usersService.remove(googleId);
+  async removeUser(@CurrentUser() user: CreateUserInput): Promise<string> {
+    const message: string = await this.usersService.remove(user.googleId);
     return message;
   }
 }
