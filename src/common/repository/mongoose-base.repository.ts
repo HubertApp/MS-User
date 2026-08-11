@@ -23,8 +23,9 @@ export abstract class MongooseBaseRepository<
     googleId: string | undefined,
     item: Partial<T>,
   ): Promise<T | null> {
+    // $set nécessaire, voir ARCHITECTURE.md §3.
     return this.model
-      .findOneAndUpdate({ googleId }, item, { new: true })
+      .findOneAndUpdate({ googleId }, { $set: item }, { new: true })
       .exec();
   }
 

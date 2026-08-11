@@ -25,6 +25,12 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Modèle utilisateur
+
+Champs exposés par `GetUserResponse` / persistés en base : `googleId`, `email`, `age`, `pseudo`, `photo`, `role`, `created_at`, `updated_at`.
+
+`photo` est l'URL de la photo de profil Google, transmise par MS-Auth lors du login (`createUser`). `getMe` et `createUser` resynchronisent `pseudo`/`email`/`photo` à chaque appel, mais seulement les champs effectivement fournis : `getMe` (dont le contexte vient des headers propagés par la gateway) ne porte pas la photo, donc un appel `getMe` ne l'efface jamais si elle est déjà en base. `age`/`role` ne sont jamais réécrits par ce mécanisme, ils restent gérés côté application.
+
 ## Project setup
 
 ```bash

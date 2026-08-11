@@ -171,13 +171,25 @@ describe('UsersResolver', () => {
   });
 
   describe('removeUser', () => {
-    it('should return success message', async () => {
+    it('should remove the current user (no googleId argument)', async () => {
       mockService.remove.mockResolvedValue('Utilisateur supprimé avec succès');
 
-      const result = await resolver.removeUser('google-123');
+      const result = await resolver.removeUser(makeCurrentUser() as any);
 
       expect(result).toBe('Utilisateur supprimé avec succès');
       expect(mockService.remove).toHaveBeenCalledWith('google-123');
+    });
+
+    it('should never accept a client-supplied googleId (IDOR)', async () => {
+      mockService.remove.mockResolvedValue('Utilisateur supprimé avec succès');
+
+      await resolver.removeUser(
+        makeCurrentUser({ googleId: 'victim-id' }) as any,
+      );
+
+      // L'identité vient uniquement de @CurrentUser(), jamais d'un argument.
+      expect(mockService.remove).toHaveBeenCalledWith('victim-id');
+      expect(mockService.remove).not.toHaveBeenCalledWith('google-123');
     });
   });
 });
