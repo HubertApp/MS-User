@@ -25,6 +25,7 @@ services:
     container_name: service_user
     environment:
       - MONGO_URL=mongodb://mongodb:27017/hubertapp_users
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
     depends_on:
       - mongodb
     ports:
