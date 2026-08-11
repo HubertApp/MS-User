@@ -240,12 +240,12 @@ describe('Users integration tests', () => {
     );
   });
 
-  it('should remove a user via removeUser mutation', async () => {
+  it('should remove the current user via removeUser mutation (no googleId argument)', async () => {
     mockRepo.delete.mockResolvedValue(true);
 
     const mutation = `
-      mutation RemoveUser($googleId: String!) {
-        removeUser(googleId: $googleId)
+      mutation RemoveUser {
+        removeUser
       }
     `;
 
@@ -257,11 +257,40 @@ describe('Users integration tests', () => {
       .set('x-user-pseudo', 'meuser')
       .set('x-user-age', '30')
       .set('x-user-role', 'user')
-      .send({ query: mutation, variables: { googleId: 'google-123' } })
+      .send({ query: mutation })
       .expect(200);
 
     expect(response.body.errors).toBeUndefined();
     expect(response.body.data.removeUser).toBe('Utilisateur supprimé avec succès');
+    // L'identité supprimée vient uniquement du header x-user-id (JWT), jamais
+    // d'un argument GraphQL fourni par le client — voir ARCHITECTURE.md §2.
     expect(mockRepo.delete).toHaveBeenCalledWith('google-123');
+  });
+
+  it('should ignore any client-supplied googleId and only remove the authenticated user', async () => {
+    mockRepo.delete.mockResolvedValue(true);
+
+    // La mutation n'expose plus aucun argument : un googleId envoyé dans les
+    // variables de la requête est simplement ignoré par le serveur GraphQL.
+    const mutation = `
+      mutation RemoveUser {
+        removeUser
+      }
+    `;
+
+    const response = await request(app.getHttpServer())
+      .post(graphqlEndpoint)
+      .set('x-auth-state', 'VALID')
+      .set('x-user-id', 'google-123')
+      .set('x-user-email', 'me@example.com')
+      .set('x-user-pseudo', 'meuser')
+      .set('x-user-age', '30')
+      .set('x-user-role', 'user')
+      .send({ query: mutation, variables: { googleId: 'victim-id' } })
+      .expect(200);
+
+    expect(response.body.errors).toBeUndefined();
+    expect(mockRepo.delete).toHaveBeenCalledWith('google-123');
+    expect(mockRepo.delete).not.toHaveBeenCalledWith('victim-id');
   });
 });

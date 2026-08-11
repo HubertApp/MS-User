@@ -124,7 +124,7 @@ describe('UsersRepository', () => {
       expect(result).toEqual(mockDoc);
       expect(MockModel.findOneAndUpdate).toHaveBeenCalledWith(
         { googleId: 'google-123' },
-        { email: 'updated@test.com' },
+        { $set: { email: 'updated@test.com' } },
         { new: true },
       );
     });
