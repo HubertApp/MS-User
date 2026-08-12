@@ -33,6 +33,11 @@ services:
     container_name: service_user
     environment:
       - MONGO_URL=mongodb://mongodb-user:27017/hubertapp_users
+      # URL non-TLS : évite la lecture du certificat CA (/etc/rabbitmq-tls/ca.pem)
+      # qui n'existe que dans le cluster k8s. Aucun broker n'écoute ici, donc
+      # la publication d'événements échouera silencieusement (fire-and-forget),
+      # mais l'appli démarre normalement.
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
     depends_on:
       - mongodb-user
     ports:
@@ -47,4 +52,3 @@ volumes:
 networks:
   hubert-network:
     external: true
-
