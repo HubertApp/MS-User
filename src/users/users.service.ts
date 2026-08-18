@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { UsersRepository } from './repository/users.repository';
@@ -7,6 +7,8 @@ import { ClientProxy } from '@nestjs/microservices';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private readonly usersRepository: UsersRepository,
     @Inject('NOTIF_SERVICE') private readonly notifClient: ClientProxy,
@@ -27,7 +29,30 @@ export class UsersService {
       return newUser;
     }
 
-    return userExistent;
+    return this.syncProfile(userExistent as User, createUserInput);
+  }
+
+  // Resynchronise pseudo/email/photo depuis Google à chaque login (appelé
+  // par getMe et createUser). age/role restent gérés côté app et ne sont
+  // jamais écrasés ici. Un champ absent de l'input (ex: photo via getMe,
+  // qui ne la transmet pas) n'efface pas la valeur déjà en base.
+  private async syncProfile(
+    existing: User,
+    input: CreateUserInput,
+  ): Promise<User> {
+    const patch: Partial<CreateUserInput> = {};
+    if (input.pseudo) patch.pseudo = input.pseudo;
+    if (input.email) patch.email = input.email;
+    if (input.photo) patch.photo = input.photo;
+
+    if (Object.keys(patch).length === 0) return existing;
+
+    patch.updated_at = new Date();
+    const updated = await this.usersRepository.update(
+      existing.googleId,
+      patch,
+    );
+    return updated ?? existing;
   }
 
   async findAll() {
@@ -60,19 +85,44 @@ export class UsersService {
     return 'Utilisateur non trouvé';
   }
 
-  async remove(googleId: string): Promise<string> {
+  async remove(googleId: string | undefined): Promise<string> {
     await this.usersRepository.delete(googleId);
     return 'Utilisateur supprimé avec succès';
   }
 
+  // MS-notifications (EventPattern 'user_created') ne déclenche l'envoi que
+  // si data.user_id ET data.email sont présents — user_id est donc
+  // obligatoire ici, pas juste un bonus.
   private sendNotification(user: any) {
+    if (!user.googleId || !user.email) return;
+
     const payload = {
+      user_id: user.googleId,
       email: user.email,
       pseudo: user.pseudo,
       subject: 'Bienvenue sur Hubert App !',
       template: 'welcome',
     };
 
-    this.notifClient.emit('user_created', payload);
+    // emit() renvoie un Observable froid : sans subscribe(), rien n'est
+    // publié du tout (piège classique NestJS/RxJS). Fire-and-forget : une
+    // erreur de publication ne doit jamais faire échouer la création du
+    // compte, déjà persisté à ce stade.
+    try {
+      this.notifClient.emit('user_created', payload).subscribe({
+        error: (err) =>
+          this.logger.warn(
+            `Échec de publication de user_created pour ${user.googleId} : ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          ),
+      });
+    } catch (err) {
+      this.logger.warn(
+        `Échec de publication de user_created pour ${user.googleId} : ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 }

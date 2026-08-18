@@ -171,13 +171,21 @@ describe('UsersResolver', () => {
   });
 
   describe('removeUser', () => {
-    it('should return success message', async () => {
+    // Pas d'argument googleId (voir guards/current-user.decorator.ts) :
+    // l'identité vient uniquement de @CurrentUser(), jamais d'un argument
+    // client, sinon un utilisateur authentifié pourrait supprimer le compte
+    // de quelqu'un d'autre en fournissant son googleId (IDOR).
+    it('should return success message using the current user googleId, not a client-supplied one', async () => {
       mockService.remove.mockResolvedValue('Utilisateur supprimé avec succès');
 
-      const result = await resolver.removeUser('google-123');
+      const result = await resolver.removeUser(makeCurrentUser() as any);
 
       expect(result).toBe('Utilisateur supprimé avec succès');
       expect(mockService.remove).toHaveBeenCalledWith('google-123');
+    });
+
+    it('should never be callable with a raw googleId argument (no such parameter exists)', () => {
+      expect(resolver.removeUser.length).toBe(1);
     });
   });
 });

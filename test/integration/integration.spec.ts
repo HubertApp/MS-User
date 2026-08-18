@@ -22,7 +22,7 @@ const mockRepo = {
 };
 
 const mockNotifClient = {
-  emit: jest.fn(),
+  emit: jest.fn().mockReturnValue({ subscribe: jest.fn() }),
 };
 
 describe('Users integration tests', () => {
@@ -114,6 +114,90 @@ describe('Users integration tests', () => {
         email: 'test@example.com',
       }),
     );
+  });
+
+  it('should create a new user with a photo and publish a welcome notification', async () => {
+    const userInput = {
+      googleId: 'google-photo',
+      email: 'photo@example.com',
+      age: 22,
+      pseudo: 'photouser',
+      role: 'user',
+      photo: 'https://example.com/avatar.jpg',
+    };
+
+    mockRepo.findById.mockResolvedValue(null);
+    mockRepo.create.mockResolvedValue({
+      ...userInput,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+
+    const mutation = `
+      mutation CreateUser($input: CreateUserInput!) {
+        createUser(createUserInput: $input) {
+          googleId
+          photo
+        }
+      }
+    `;
+
+    const response = await request(app.getHttpServer())
+      .post(graphqlEndpoint)
+      .send({ query: mutation, variables: { input: userInput } })
+      .expect(200);
+
+    expect(response.body.errors).toBeUndefined();
+    expect(response.body.data.createUser.photo).toBe(userInput.photo);
+    // MS-notifications (EventPattern user_created) exige user_id + email
+    // dans le payload, voir users.service.ts sendNotification().
+    expect(mockNotifClient.emit).toHaveBeenCalledWith(
+      'user_created',
+      expect.objectContaining({ user_id: userInput.googleId, email: userInput.email }),
+    );
+  });
+
+  it('should resync only the provided fields for an existing user via getMe (syncProfile)', async () => {
+    const existing = {
+      googleId: 'google-sync',
+      email: 'old@example.com',
+      pseudo: 'old-pseudo',
+      age: 40,
+      role: 'admin',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    mockRepo.findById.mockResolvedValue(existing);
+    mockRepo.update.mockResolvedValue({ ...existing, pseudo: 'new-pseudo' });
+
+    const query = `
+      query {
+        getMe {
+          googleId
+          pseudo
+        }
+      }
+    `;
+
+    const response = await request(app.getHttpServer())
+      .post(graphqlEndpoint)
+      .set('x-auth-state', 'VALID')
+      .set('x-user-id', existing.googleId)
+      .set('x-user-email', existing.email)
+      .set('x-user-pseudo', 'new-pseudo')
+      .set('x-user-age', String(existing.age))
+      .set('x-user-role', existing.role)
+      .send({ query })
+      .expect(200);
+
+    expect(response.body.errors).toBeUndefined();
+    expect(response.body.data.getMe.pseudo).toBe('new-pseudo');
+    // age/role ne doivent jamais être écrasés par syncProfile (gérés côté
+    // app, pas synchronisés depuis Google) -- voir users.service.ts.
+    const patch = mockRepo.update.mock.calls[0][1];
+    expect(patch).not.toHaveProperty('age');
+    expect(patch).not.toHaveProperty('role');
   });
 
   it('should return the authenticated user via getMe query', async () => {
@@ -240,12 +324,16 @@ describe('Users integration tests', () => {
     );
   });
 
-  it('should remove a user via removeUser mutation', async () => {
+  it('should remove the authenticated user via removeUser mutation (no client-supplied id)', async () => {
     mockRepo.delete.mockResolvedValue(true);
 
+    // Pas d'argument googleId dans la mutation : l'identité vient
+    // uniquement des headers de confiance (x-user-id), posés par le
+    // routeur/gateway après vérification du token -- jamais d'un argument
+    // client, sinon IDOR (voir users.resolver.ts).
     const mutation = `
-      mutation RemoveUser($googleId: String!) {
-        removeUser(googleId: $googleId)
+      mutation RemoveUser {
+        removeUser
       }
     `;
 
@@ -257,11 +345,27 @@ describe('Users integration tests', () => {
       .set('x-user-pseudo', 'meuser')
       .set('x-user-age', '30')
       .set('x-user-role', 'user')
-      .send({ query: mutation, variables: { googleId: 'google-123' } })
+      .send({ query: mutation })
       .expect(200);
 
     expect(response.body.errors).toBeUndefined();
     expect(response.body.data.removeUser).toBe('Utilisateur supprimé avec succès');
     expect(mockRepo.delete).toHaveBeenCalledWith('google-123');
+  });
+
+  it('should reject removeUser without a valid authenticated identity', async () => {
+    const mutation = `
+      mutation RemoveUser {
+        removeUser
+      }
+    `;
+
+    const response = await request(app.getHttpServer())
+      .post(graphqlEndpoint)
+      .send({ query: mutation })
+      .expect(401);
+
+    expect(response.body.errors).toBeDefined();
+    expect(mockRepo.delete).not.toHaveBeenCalled();
   });
 });
