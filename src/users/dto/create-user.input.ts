@@ -15,6 +15,9 @@ export class CreateUserInput {
   pseudo?: string;
 
   @Field(() => String, { nullable: true })
+  photo?: string;
+
+  @Field(() => String, { nullable: true })
   role?: string;
 
   @Field(() => Date, { nullable: true, defaultValue: new Date() })

@@ -18,6 +18,9 @@ export class UserMongooseSchema {
   pseudo?: string;
 
   @Prop({ type: String, nullable: true })
+  photo?: string;
+
+  @Prop({ type: String, nullable: true })
   role?: string;
 
   @Prop({ type: Date, nullable: true })

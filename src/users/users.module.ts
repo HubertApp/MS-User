@@ -13,7 +13,9 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
         name: 'NOTIF_SERVICE',
         transport: Transport.RMQ,
         options: {
-          urls: [process.env.RABBITMQ_URL || 'amqp://null'],
+          // "rabbitmq" = nom du Service k8s ; fallback au cas où
+          // RABBITMQ_URL ne serait pas défini dans le secret monté.
+          urls: [process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672'],
           queue: 'notifications_queue',
           noAssert: true,
           queueOptions: {

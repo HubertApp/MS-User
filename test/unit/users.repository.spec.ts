@@ -122,9 +122,12 @@ describe('UsersRepository', () => {
       });
 
       expect(result).toEqual(mockDoc);
+      // $set : voir mongoose-base.repository.ts -- sans lui, findOneAndUpdate
+      // remplacerait tout le document au lieu de ne mettre à jour que les
+      // champs fournis.
       expect(MockModel.findOneAndUpdate).toHaveBeenCalledWith(
         { googleId: 'google-123' },
-        { email: 'updated@test.com' },
+        { $set: { email: 'updated@test.com' } },
         { new: true },
       );
     });

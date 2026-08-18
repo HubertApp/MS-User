@@ -41,8 +41,12 @@ const mockRepo = {
   delete: jest.fn(),
 };
 
+// emit() doit renvoyer un Observable (ou assimilé) avec .subscribe() : sans
+// ça sendNotification() catch silencieusement une TypeError et les
+// assertions sur le payload publié ne servent à rien.
+const mockSubscribe = jest.fn();
 const mockNotifClient = {
-  emit: jest.fn(),
+  emit: jest.fn().mockReturnValue({ subscribe: mockSubscribe }),
 };
 
 describe('UsersService', () => {
@@ -116,6 +120,148 @@ describe('UsersService', () => {
       expect(callArg.created_at.getTime()).toBeGreaterThanOrEqual(
         before.getTime(),
       );
+    });
+  });
+
+  // ─────────────────────────────────────────────
+  // syncProfile() est privée, testée via create() quand l'utilisateur existe
+  // déjà (chemin emprunté par getMe et createUser à chaque login Google).
+  describe('create -> syncProfile (utilisateur existant)', () => {
+    it('should patch only pseudo/email/photo when provided, never age/role', async () => {
+      const existing = makeUser({
+        pseudo: 'old-pseudo',
+        email: 'old@example.com',
+        age: 40,
+        role: 'admin',
+      });
+      const input = makeCreateInput({
+        pseudo: 'new-pseudo',
+        email: 'new@example.com',
+        photo: 'https://example.com/photo.jpg',
+        age: 99,
+        role: 'user',
+      } as any);
+
+      mockRepo.findById.mockResolvedValue(existing);
+      mockRepo.update.mockResolvedValue({ ...existing, ...input });
+
+      await service.create(input);
+
+      expect(mockRepo.update).toHaveBeenCalledWith(
+        existing.googleId,
+        expect.objectContaining({
+          pseudo: 'new-pseudo',
+          email: 'new@example.com',
+          photo: 'https://example.com/photo.jpg',
+          updated_at: expect.any(Date),
+        }),
+      );
+      const patch = mockRepo.update.mock.calls[0][1];
+      expect(patch).not.toHaveProperty('age');
+      expect(patch).not.toHaveProperty('role');
+    });
+
+    it('should not erase photo in DB when input omits it (e.g. getMe)', async () => {
+      const existing = makeUser({ photo: 'https://example.com/existing.jpg' } as any);
+      const input = makeCreateInput({ pseudo: 'same-ish' });
+      delete (input as any).photo;
+
+      mockRepo.findById.mockResolvedValue(existing);
+      mockRepo.update.mockResolvedValue(existing);
+
+      await service.create(input);
+
+      const patch = mockRepo.update.mock.calls[0][1];
+      expect(patch).not.toHaveProperty('photo');
+    });
+
+    it('should not call repository.update at all when nothing changed (falsy fields)', async () => {
+      const existing = makeUser();
+      const input = makeCreateInput();
+      delete (input as any).pseudo;
+      delete (input as any).email;
+      delete (input as any).photo;
+
+      mockRepo.findById.mockResolvedValue(existing);
+
+      const result = await service.create(input);
+
+      expect(mockRepo.update).not.toHaveBeenCalled();
+      expect(result).toEqual(existing);
+    });
+
+    it('should fall back to the existing user when update returns null', async () => {
+      const existing = makeUser();
+      const input = makeCreateInput({ pseudo: 'changed' });
+
+      mockRepo.findById.mockResolvedValue(existing);
+      mockRepo.update.mockResolvedValue(null);
+
+      const result = await service.create(input);
+
+      expect(result).toEqual(existing);
+    });
+  });
+
+  // ─────────────────────────────────────────────
+  // sendNotification() est privée, déclenchée uniquement à la création d'un
+  // nouvel utilisateur. Couvre le bug corrigé cette session : user_id
+  // manquant dans le payload + emit() jamais subscribe() (Observable froid).
+  describe('create -> sendNotification (nouvel utilisateur)', () => {
+    it('should publish user_created with user_id (required by MS-notifications dispatch)', async () => {
+      const input = makeCreateInput({ googleId: 'google-new', email: 'new@test.com', pseudo: 'newbie' });
+      mockRepo.findById.mockResolvedValue(null);
+      mockRepo.create.mockResolvedValue(makeUser({ googleId: 'google-new', email: 'new@test.com', pseudo: 'newbie' }));
+
+      await service.create(input);
+
+      expect(mockNotifClient.emit).toHaveBeenCalledWith(
+        'user_created',
+        expect.objectContaining({
+          user_id: 'google-new',
+          email: 'new@test.com',
+          pseudo: 'newbie',
+          subject: expect.any(String),
+          template: 'welcome',
+        }),
+      );
+    });
+
+    it('should subscribe to the emitted Observable (emit() alone publishes nothing)', async () => {
+      const input = makeCreateInput({ googleId: 'google-new' });
+      mockRepo.findById.mockResolvedValue(null);
+      mockRepo.create.mockResolvedValue(makeUser({ googleId: 'google-new' }));
+
+      await service.create(input);
+
+      expect(mockSubscribe).toHaveBeenCalledTimes(1);
+      expect(mockSubscribe).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.any(Function) }),
+      );
+    });
+
+    it('should not publish when the new user has no email', async () => {
+      const input = makeCreateInput({ googleId: 'google-new', email: undefined as any });
+      mockRepo.findById.mockResolvedValue(null);
+      mockRepo.create.mockResolvedValue(makeUser({ googleId: 'google-new', email: undefined as any }));
+
+      await service.create(input);
+
+      expect(mockNotifClient.emit).not.toHaveBeenCalled();
+    });
+
+    it('should not throw and should still return the created user if publishing fails synchronously', async () => {
+      const input = makeCreateInput({ googleId: 'google-new' });
+      const created = makeUser({ googleId: 'google-new' });
+      mockRepo.findById.mockResolvedValue(null);
+      mockRepo.create.mockResolvedValue(created);
+      mockNotifClient.emit.mockImplementationOnce(() => {
+        throw new Error('broker unreachable');
+      });
+
+      const result = await service.create(input);
+
+      expect(result).toEqual(created);
     });
   });
 
