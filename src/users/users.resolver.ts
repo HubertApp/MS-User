@@ -74,4 +74,20 @@ export class UsersResolver {
     const message: string = await this.usersService.remove(user.googleId);
     return message;
   }
+
+  // Même principe que removeUser/updateUser : googleId vient uniquement de
+  // @CurrentUser(), jamais d'un argument client (IDOR).
+  @Span('updateNotificationPreferences_resolver')
+  @UseGuards(FederatedAuthGuard)
+  @Mutation(() => GetUserResponse)
+  async updateNotificationPreferences(
+    @CurrentUser() user: CreateUserInput,
+    @Args('disabledChannels', { type: () => [String] })
+    disabledChannels: string[],
+  ): Promise<GetUserResponse> {
+    return this.usersService.updateNotificationPreferences(
+      user.googleId,
+      disabledChannels,
+    );
+  }
 }
