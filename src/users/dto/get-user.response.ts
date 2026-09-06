@@ -20,6 +20,9 @@ export class GetUserResponse {
   @Field(() => String, { nullable: true })
   role?: string;
 
+  @Field(() => [String], { nullable: true })
+  notificationChannelsDisabled?: string[];
+
   @Field(() => Date, { nullable: true })
   created_at?: Date;
 

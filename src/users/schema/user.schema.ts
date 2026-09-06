@@ -23,6 +23,9 @@ export class UserMongooseSchema {
   @Prop({ type: String, nullable: true })
   role?: string;
 
+  @Prop({ type: [String], default: [] })
+  notificationChannelsDisabled?: string[];
+
   @Prop({ type: Date, nullable: true })
   created_at?: Date;
 

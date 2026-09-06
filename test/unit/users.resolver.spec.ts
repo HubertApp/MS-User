@@ -31,6 +31,7 @@ const mockService = {
   findAll: jest.fn(),
   update: jest.fn(),
   remove: jest.fn(),
+  updateNotificationPreferences: jest.fn(),
 };
 
 describe('UsersResolver', () => {
@@ -186,6 +187,29 @@ describe('UsersResolver', () => {
 
     it('should never be callable with a raw googleId argument (no such parameter exists)', () => {
       expect(resolver.removeUser.length).toBe(1);
+    });
+  });
+
+  describe('updateNotificationPreferences', () => {
+    it('should use the current user googleId, not a client-supplied one', async () => {
+      mockService.updateNotificationPreferences.mockResolvedValue(
+        makeUser({ notificationChannelsDisabled: ['EMAIL'] } as any),
+      );
+
+      const result = await resolver.updateNotificationPreferences(
+        makeCurrentUser() as any,
+        ['EMAIL'],
+      );
+
+      expect(mockService.updateNotificationPreferences).toHaveBeenCalledWith(
+        'google-123',
+        ['EMAIL'],
+      );
+      expect(result.notificationChannelsDisabled).toEqual(['EMAIL']);
+    });
+
+    it('should never be callable with a raw googleId argument (only disabledChannels + current user)', () => {
+      expect(resolver.updateNotificationPreferences.length).toBe(2);
     });
   });
 });

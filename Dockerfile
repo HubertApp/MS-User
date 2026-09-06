@@ -1,8 +1,13 @@
+# syntax=docker/dockerfile:1
 FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+# Cache BuildKit sur ~/.npm : les tarballs déjà téléchargés sont réutilisés
+# d'un build à l'autre même quand package-lock.json change, au lieu de tout
+# retélécharger depuis le registre à chaque fois (lent depuis le daemon
+# docker de minikube).
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
 RUN npm run build
