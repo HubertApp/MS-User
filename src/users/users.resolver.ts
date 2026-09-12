@@ -4,6 +4,7 @@ import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
 import { UseGuards } from '@nestjs/common';
 import { FederatedAuthGuard } from './guards/federated-auth.guard';
+import { AdminGuard } from './guards/admin-auth.guard';
 import { CurrentUser } from './decorator/current-user.decorator';
 import { User } from './entities/user.entity';
 import { Span } from 'nestjs-otel';
@@ -41,11 +42,13 @@ export class UsersResolver {
   }
 
   @Query(() => [GetUserResponse])
+  @UseGuards(AdminGuard)
   @Span('findAll_resolver')
   async findAll() {
     const users: User[] = await this.usersService.findAll();
     return users;
   }
+  
   @Query(() => GetUserResponse)
   @UseGuards(FederatedAuthGuard)
   @Span('findOne_resolver')
