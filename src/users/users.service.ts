@@ -90,6 +90,36 @@ export class UsersService {
     return 'Utilisateur supprimé avec succès';
   }
 
+  // Liste blanche : évite qu'un canal mal orthographié désactive
+  // silencieusement rien du tout, et documente les valeurs valides au même
+  // endroit que les canaux réellement implémentés côté MS-notifications
+  // (voir channels/ dans ce service).
+  private static readonly VALID_CHANNELS = ['IN_APP', 'EMAIL'];
+
+  async updateNotificationPreferences(
+    googleId: string | undefined,
+    disabledChannels: string[],
+  ): Promise<User> {
+    const deduped = [
+      ...new Set(
+        disabledChannels.filter((c) =>
+          UsersService.VALID_CHANNELS.includes(c),
+        ),
+      ),
+    ];
+
+    const updated = await this.usersRepository.update(googleId, {
+      notificationChannelsDisabled: deduped,
+      updated_at: new Date(),
+    });
+
+    if (!updated) {
+      throw new Error('Utilisateur non trouvé');
+    }
+
+    return updated;
+  }
+
   // MS-notifications (EventPattern 'user_created') ne déclenche l'envoi que
   // si data.user_id ET data.email sont présents — user_id est donc
   // obligatoire ici, pas juste un bonus.

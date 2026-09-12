@@ -389,4 +389,47 @@ describe('UsersService', () => {
       );
     });
   });
+
+  // ─────────────────────────────────────────────
+  describe('updateNotificationPreferences', () => {
+    it('should persist a valid list of disabled channels', async () => {
+      mockRepo.update.mockResolvedValue(makeUser());
+
+      await service.updateNotificationPreferences('google-123', ['EMAIL', 'IN_APP']);
+
+      expect(mockRepo.update).toHaveBeenCalledWith(
+        'google-123',
+        expect.objectContaining({
+          notificationChannelsDisabled: ['EMAIL', 'IN_APP'],
+          updated_at: expect.any(Date),
+        }),
+      );
+    });
+
+    it('should silently drop unknown channel values (defends against typos)', async () => {
+      mockRepo.update.mockResolvedValue(makeUser());
+
+      await service.updateNotificationPreferences('google-123', ['EMAIL', 'SMS_TYPO']);
+
+      const patch = mockRepo.update.mock.calls[0][1];
+      expect(patch.notificationChannelsDisabled).toEqual(['EMAIL']);
+    });
+
+    it('should deduplicate repeated channel values', async () => {
+      mockRepo.update.mockResolvedValue(makeUser());
+
+      await service.updateNotificationPreferences('google-123', ['EMAIL', 'EMAIL']);
+
+      const patch = mockRepo.update.mock.calls[0][1];
+      expect(patch.notificationChannelsDisabled).toEqual(['EMAIL']);
+    });
+
+    it('should throw when the user does not exist', async () => {
+      mockRepo.update.mockResolvedValue(null);
+
+      await expect(
+        service.updateNotificationPreferences('unknown', ['EMAIL']),
+      ).rejects.toThrow('Utilisateur non trouvé');
+    });
+  });
 });
