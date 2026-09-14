@@ -1,7 +1,7 @@
 import { GqlExecutionContext } from '@nestjs/graphql';
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { FederatedAuthGuard } from './federated-auth.guard';
-import { UnauthorizedException } from '../exception/unauthorized.exception';
+import { ForbiddenException } from '../exception/forbidden.exception';
 
 @Injectable()
 export class AdminGuard extends FederatedAuthGuard {
@@ -10,7 +10,7 @@ export class AdminGuard extends FederatedAuthGuard {
 
     const ctx = GqlExecutionContext.create(context).getContext();
 
-    if (ctx.req.user.role !== 'ADMIN') {
+    if (ctx.req.user?.role !== 'ADMIN') {
       throw new ForbiddenException('Droits insuffisants');
     }
 

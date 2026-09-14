@@ -20,9 +20,9 @@ export class CreateUserInput {
   @Field(() => String, { nullable: true })
   role?: string;
 
-  @Field(() => Date, { nullable: true, defaultValue: new Date() })
+  @Field(() => Date, { nullable: true })
   created_at?: Date;
 
-  @Field(() => Date, { nullable: true, defaultValue: new Date() })
+  @Field(() => Date, { nullable: true })
   updated_at?: Date;
 }

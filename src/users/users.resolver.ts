@@ -9,6 +9,7 @@ import { CurrentUser } from './decorator/current-user.decorator';
 import { User } from './entities/user.entity';
 import { Span } from 'nestjs-otel';
 import { GetUserResponse } from './dto/get-user.response';
+import { UserNotFoundException } from './exception/user-not-found.exception';
 
 @Resolver(() => GetUserResponse)
 export class UsersResolver {
@@ -27,11 +28,14 @@ export class UsersResolver {
   @Query(() => GetUserResponse)
   @Span('getOne_resolver')
   @UseGuards(FederatedAuthGuard)
-  async getOne(
-    @CurrentUser() user: CreateUserInput,
-  ): Promise<GetUserResponse | boolean> {
+  async getOne(@CurrentUser() user: CreateUserInput): Promise<GetUserResponse> {
     const foundUser = await this.usersService.findOne(user.googleId);
-    return foundUser;
+
+    if (!foundUser) {
+      throw new UserNotFoundException();
+    }
+
+    return foundUser as GetUserResponse;
   }
 
   @Directive('@inaccessible')
@@ -48,13 +52,18 @@ export class UsersResolver {
     const users: User[] = await this.usersService.findAll();
     return users;
   }
-  
+
   @Query(() => GetUserResponse)
   @UseGuards(FederatedAuthGuard)
   @Span('findOne_resolver')
-  async findOne(@Args('googleId') googleId: string) {
+  async findOne(@Args('googleId') googleId: string): Promise<GetUserResponse> {
     const user: User | boolean = await this.usersService.findOne(googleId);
-    return user;
+
+    if (!user) {
+      throw new UserNotFoundException();
+    }
+
+    return user as GetUserResponse;
   }
 
   @Span('updateUser_resolver')
