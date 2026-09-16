@@ -265,7 +265,6 @@ describe('Users integration tests', () => {
       }
     `;
 
-
   it('should return an empty list from findAll query when there are no users', async () => {
     mockRepo.findAll.mockResolvedValue([]);
 

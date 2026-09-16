@@ -1,6 +1,5 @@
 import { GraphQLError } from 'graphql';
 
-
 export class ForbiddenException extends GraphQLError {
   constructor(message: string = 'Droits insuffisants') {
     super(message, {
