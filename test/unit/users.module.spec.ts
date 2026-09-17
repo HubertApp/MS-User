@@ -27,7 +27,6 @@ describe('UsersModule (RABBITMQ_URL fallback)', () => {
   async function compileModuleWithFreshEnv(): Promise<TestingModule> {
     jest.resetModules();
 
-
     return Test.createTestingModule({
       imports: [UsersModule],
     })

@@ -2,7 +2,7 @@ import { Resolver, Query, Mutation, Args, Directive } from '@nestjs/graphql';
 import { UsersService } from './users.service';
 import { CreateUserInput } from './dto/create-user.input';
 import { UpdateUserInput } from './dto/update-user.input';
-import { UseGuards } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
 import { FederatedAuthGuard } from './guards/federated-auth.guard';
 import { AdminGuard } from './guards/admin-auth.guard';
 import { CurrentUser } from './decorator/current-user.decorator';
@@ -13,8 +13,10 @@ import { UserNotFoundException } from './exception/user-not-found.exception';
 
 @Resolver(() => GetUserResponse)
 export class UsersResolver {
+  private readonly logger = new Logger(UsersService.name);
+  
   constructor(private readonly usersService: UsersService) {}
-
+  
   @Query(() => GetUserResponse)
   @Span('getMe_resolver')
   @UseGuards(FederatedAuthGuard)
@@ -22,6 +24,7 @@ export class UsersResolver {
     @CurrentUser() user: CreateUserInput,
   ): Promise<GetUserResponse | boolean> {
     const foundUser = await this.usersService.create(user);
+    this.logger.log(`User found or created`);
     return foundUser;
   }
 
