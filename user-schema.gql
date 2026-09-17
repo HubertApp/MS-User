@@ -4,12 +4,13 @@
 
 input CreateUserInput {
   age: Int
-  created_at: DateTime = "2026-08-06T09:54:04.314Z"
+  created_at: DateTime
   email: String
   googleId: ID!
+  photo: String
   pseudo: String
   role: String
-  updated_at: DateTime = "2026-08-06T09:54:04.314Z"
+  updated_at: DateTime
 }
 
 """
@@ -22,6 +23,8 @@ type GetUserResponse {
   created_at: DateTime
   email: String
   googleId: ID!
+  notificationChannelsDisabled: [String!]
+  photo: String
   pseudo: String
   role: String
   updated_at: DateTime
@@ -29,7 +32,8 @@ type GetUserResponse {
 
 type Mutation {
   createUser(createUserInput: CreateUserInput!): GetUserResponse!
-  removeUser(googleId: String!): String!
+  removeUser: String!
+  updateNotificationPreferences(disabledChannels: [String!]!): GetUserResponse!
   updateUser(updateUserInput: UpdateUserInput!): String!
 }
 
@@ -43,7 +47,7 @@ type Query {
 input UpdateUserInput {
   age: Int
   email: String
+  photo: String
   pseudo: String
-  role: String
-  update_at: DateTime
+  updated_at: DateTime
 }

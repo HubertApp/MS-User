@@ -4,6 +4,7 @@ import { UsersRepository } from '../../src/users/repository/users.repository';
 import { CreateUserInput } from '../../src/users/dto/create-user.input';
 import { UpdateUserInput } from '../../src/users/dto/update-user.input';
 import { User } from '../../src/users/entities/user.entity';
+import { UserNotFoundException } from '../../src/users/exception/user-not-found.exception';
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -162,7 +163,9 @@ describe('UsersService', () => {
     });
 
     it('should not erase photo in DB when input omits it (e.g. getMe)', async () => {
-      const existing = makeUser({ photo: 'https://example.com/existing.jpg' } as any);
+      const existing = makeUser({
+        photo: 'https://example.com/existing.jpg',
+      } as any);
       const input = makeCreateInput({ pseudo: 'same-ish' });
       delete (input as any).photo;
 
@@ -209,9 +212,19 @@ describe('UsersService', () => {
   // manquant dans le payload + emit() jamais subscribe() (Observable froid).
   describe('create -> sendNotification (nouvel utilisateur)', () => {
     it('should publish user_created with user_id (required by MS-notifications dispatch)', async () => {
-      const input = makeCreateInput({ googleId: 'google-new', email: 'new@test.com', pseudo: 'newbie' });
+      const input = makeCreateInput({
+        googleId: 'google-new',
+        email: 'new@test.com',
+        pseudo: 'newbie',
+      });
       mockRepo.findById.mockResolvedValue(null);
-      mockRepo.create.mockResolvedValue(makeUser({ googleId: 'google-new', email: 'new@test.com', pseudo: 'newbie' }));
+      mockRepo.create.mockResolvedValue(
+        makeUser({
+          googleId: 'google-new',
+          email: 'new@test.com',
+          pseudo: 'newbie',
+        }),
+      );
 
       await service.create(input);
 
@@ -241,9 +254,14 @@ describe('UsersService', () => {
     });
 
     it('should not publish when the new user has no email', async () => {
-      const input = makeCreateInput({ googleId: 'google-new', email: undefined as any });
+      const input = makeCreateInput({
+        googleId: 'google-new',
+        email: undefined as any,
+      });
       mockRepo.findById.mockResolvedValue(null);
-      mockRepo.create.mockResolvedValue(makeUser({ googleId: 'google-new', email: undefined as any }));
+      mockRepo.create.mockResolvedValue(
+        makeUser({ googleId: 'google-new', email: undefined as any }),
+      );
 
       await service.create(input);
 
@@ -395,7 +413,10 @@ describe('UsersService', () => {
     it('should persist a valid list of disabled channels', async () => {
       mockRepo.update.mockResolvedValue(makeUser());
 
-      await service.updateNotificationPreferences('google-123', ['EMAIL', 'IN_APP']);
+      await service.updateNotificationPreferences('google-123', [
+        'EMAIL',
+        'IN_APP',
+      ]);
 
       expect(mockRepo.update).toHaveBeenCalledWith(
         'google-123',
@@ -409,7 +430,10 @@ describe('UsersService', () => {
     it('should silently drop unknown channel values (defends against typos)', async () => {
       mockRepo.update.mockResolvedValue(makeUser());
 
-      await service.updateNotificationPreferences('google-123', ['EMAIL', 'SMS_TYPO']);
+      await service.updateNotificationPreferences('google-123', [
+        'EMAIL',
+        'SMS_TYPO',
+      ]);
 
       const patch = mockRepo.update.mock.calls[0][1];
       expect(patch.notificationChannelsDisabled).toEqual(['EMAIL']);
@@ -418,7 +442,10 @@ describe('UsersService', () => {
     it('should deduplicate repeated channel values', async () => {
       mockRepo.update.mockResolvedValue(makeUser());
 
-      await service.updateNotificationPreferences('google-123', ['EMAIL', 'EMAIL']);
+      await service.updateNotificationPreferences('google-123', [
+        'EMAIL',
+        'EMAIL',
+      ]);
 
       const patch = mockRepo.update.mock.calls[0][1];
       expect(patch.notificationChannelsDisabled).toEqual(['EMAIL']);
@@ -429,7 +456,17 @@ describe('UsersService', () => {
 
       await expect(
         service.updateNotificationPreferences('unknown', ['EMAIL']),
-      ).rejects.toThrow('Utilisateur non trouvé');
+      ).rejects.toBeInstanceOf(UserNotFoundException);
+    });
+
+    it('should surface a 404 USER_NOT_FOUND rather than a generic server error', async () => {
+      mockRepo.update.mockResolvedValue(null);
+
+      await expect(
+        service.updateNotificationPreferences('unknown', ['EMAIL']),
+      ).rejects.toMatchObject({
+        extensions: { code: 'USER_NOT_FOUND', http: { status: 404 } },
+      });
     });
   });
 });

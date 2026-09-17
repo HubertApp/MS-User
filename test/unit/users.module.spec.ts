@@ -1,5 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
+import { UsersModule } from '../../src/users/users.module';
+import { UserMongooseSchema } from '../../src/users/schema/user.schema';
 
 // Couvre le fallback RABBITMQ_URL corrigé cette session
 // ('amqp://null' -> 'amqp://rabbitmq:5672') : sans lui, un pod dont le
@@ -24,10 +26,6 @@ describe('UsersModule (RABBITMQ_URL fallback)', () => {
 
   async function compileModuleWithFreshEnv(): Promise<TestingModule> {
     jest.resetModules();
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { UsersModule } = require('../../src/users/users.module');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { UserMongooseSchema } = require('../../src/users/schema/user.schema');
 
     return Test.createTestingModule({
       imports: [UsersModule],
@@ -41,7 +39,7 @@ describe('UsersModule (RABBITMQ_URL fallback)', () => {
     delete process.env.RABBITMQ_URL;
 
     const module = await compileModuleWithFreshEnv();
-    const notifClient = module.get('NOTIF_SERVICE') as any;
+    const notifClient = module.get('NOTIF_SERVICE');
 
     expect(notifClient.options.urls).toEqual(['amqp://rabbitmq:5672']);
 
@@ -52,7 +50,7 @@ describe('UsersModule (RABBITMQ_URL fallback)', () => {
     process.env.RABBITMQ_URL = 'amqp://custom-host:5672';
 
     const module = await compileModuleWithFreshEnv();
-    const notifClient = module.get('NOTIF_SERVICE') as any;
+    const notifClient = module.get('NOTIF_SERVICE');
 
     expect(notifClient.options.urls).toEqual(['amqp://custom-host:5672']);
 

@@ -4,6 +4,7 @@ import { UpdateUserInput } from './dto/update-user.input';
 import { UsersRepository } from './repository/users.repository';
 import { User } from './entities/user.entity';
 import { ClientProxy } from '@nestjs/microservices';
+import { UserNotFoundException } from './exception/user-not-found.exception';
 
 @Injectable()
 export class UsersService {
@@ -48,10 +49,7 @@ export class UsersService {
     if (Object.keys(patch).length === 0) return existing;
 
     patch.updated_at = new Date();
-    const updated = await this.usersRepository.update(
-      existing.googleId,
-      patch,
-    );
+    const updated = await this.usersRepository.update(existing.googleId, patch);
     return updated ?? existing;
   }
 
@@ -102,9 +100,7 @@ export class UsersService {
   ): Promise<User> {
     const deduped = [
       ...new Set(
-        disabledChannels.filter((c) =>
-          UsersService.VALID_CHANNELS.includes(c),
-        ),
+        disabledChannels.filter((c) => UsersService.VALID_CHANNELS.includes(c)),
       ),
     ];
 
@@ -114,7 +110,7 @@ export class UsersService {
     });
 
     if (!updated) {
-      throw new Error('Utilisateur non trouvé');
+      throw new UserNotFoundException();
     }
 
     return updated;
