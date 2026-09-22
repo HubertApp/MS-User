@@ -10,6 +10,7 @@ import { User } from './entities/user.entity';
 import { Span } from 'nestjs-otel';
 import { GetUserResponse } from './dto/get-user.response';
 import { UserNotFoundException } from './exception/user-not-found.exception';
+import { FavouriteUserInput } from './dto/favourite-user.input';
 
 @Resolver(() => GetUserResponse)
 export class UsersResolver {
@@ -30,6 +31,7 @@ export class UsersResolver {
 
   @Query(() => GetUserResponse)
   @Span('getOne_resolver')
+  @Directive('@inaccessible')
   @UseGuards(FederatedAuthGuard)
   async getOne(@CurrentUser() user: CreateUserInput): Promise<GetUserResponse> {
     const foundUser = await this.usersService.findOne(user.googleId);
@@ -90,6 +92,16 @@ export class UsersResolver {
     return message;
   }
 
+  @Span('addFavourite_resolver')
+  @UseGuards(FederatedAuthGuard)
+  @Mutation(() => String)
+  async addFavourite(
+    @CurrentUser() user: CreateUserInput,
+    @Args('favouriteId') favouriteId: FavouriteUserInput,
+    ): Promise<string> {
+      return this.usersService.addFavourite(user.googleId, favouriteId);
+    }
+  
   // Même principe que removeUser/updateUser : googleId vient uniquement de
   // @CurrentUser(), jamais d'un argument client (IDOR).
   @Span('updateNotificationPreferences_resolver')
