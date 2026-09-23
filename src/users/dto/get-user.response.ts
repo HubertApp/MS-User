@@ -1,4 +1,5 @@
 import { Field, Int, ID, ObjectType } from '@nestjs/graphql';
+import { Favourite } from '../entities/favourite.entity';
 
 @ObjectType()
 export class GetUserResponse {
@@ -19,6 +20,9 @@ export class GetUserResponse {
 
   @Field(() => String, { nullable: true })
   role?: string;
+
+  @Field(() => [Favourite], {nullable: true})
+  favourites? : Favourite[];
 
   @Field(() => [String], { nullable: true })
   notificationChannelsDisabled?: string[];

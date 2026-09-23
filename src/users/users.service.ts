@@ -5,6 +5,7 @@ import { UsersRepository } from './repository/users.repository';
 import { User } from './entities/user.entity';
 import { ClientProxy } from '@nestjs/microservices';
 import { UserNotFoundException } from './exception/user-not-found.exception';
+import { FavouriteUserInput } from './dto/favourite-user.input';
 
 @Injectable()
 export class UsersService {
@@ -67,6 +68,39 @@ export class UsersService {
     return false;
     // throw new NotFoundException(`Utilisateur avec l'ID Google ${googleId} introuvable.`);
   }
+
+  async addFavourite(googleId: string | undefined, favourite: FavouriteUserInput): Promise<string> {
+    if (!googleId) {
+      throw new UserNotFoundException();
+    }
+
+    const user : User | null = await this.usersRepository.findById(googleId);
+    if (!user) {
+      throw new UserNotFoundException();
+    }
+
+    const favourites = user.favourites ?? [];
+    const index = favourites.findIndex((f) => f.title === favourite.title);
+
+    const updatedFavourites =
+      index === -1
+        ? [...favourites, favourite]
+        : favourites.map((f, i) => (i === index ? favourite : f));
+
+    const updated = await this.usersRepository.update(googleId, {
+      favourites: updatedFavourites,
+      updated_at: new Date(),
+    });
+
+    if (!updated) {
+      throw new UserNotFoundException();
+    }
+
+    return index === -1
+      ? "Favorite user added successfully"
+      : "Favorite user updated successfully";
+  }
+
 
   async update(
     googleId: string | undefined,
