@@ -24,10 +24,10 @@ describe('UsersModule (RABBITMQ_URL fallback)', () => {
 
   async function compileModuleWithFreshEnv(): Promise<TestingModule> {
     jest.resetModules();
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { UsersModule } = require('../../src/users/users.module');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { UserMongooseSchema } = require('../../src/users/schema/user.schema');
+    const { UsersModule } = await import('../../src/users/users.module');
+    const { UserMongooseSchema } = await import(
+      '../../src/users/schema/user.schema'
+    );
 
     return Test.createTestingModule({
       imports: [UsersModule],
