@@ -4,6 +4,9 @@ import { UpdateUserInput } from './dto/update-user.input';
 import { UsersRepository } from './repository/users.repository';
 import { User } from './entities/user.entity';
 import { ClientProxy } from '@nestjs/microservices';
+import { UserNotFoundException } from './exception/user-not-found.exception';
+import { FavouriteUserInput } from './dto/favourite-user.input';
+import { FavouriteNotFoundException } from './exception/favourite-not-found.exception';
 
 @Injectable()
 export class UsersService {
@@ -48,10 +51,7 @@ export class UsersService {
     if (Object.keys(patch).length === 0) return existing;
 
     patch.updated_at = new Date();
-    const updated = await this.usersRepository.update(
-      existing.googleId,
-      patch,
-    );
+    const updated = await this.usersRepository.update(existing.googleId, patch);
     return updated ?? existing;
   }
 
@@ -68,6 +68,48 @@ export class UsersService {
 
     return false;
     // throw new NotFoundException(`Utilisateur avec l'ID Google ${googleId} introuvable.`);
+  }
+
+  async addFavourite(
+    googleId: string | undefined,
+    favourite: FavouriteUserInput,
+  ): Promise<string> {
+    if (!googleId) {
+      throw new UserNotFoundException();
+    }
+
+    const result = await this.usersRepository.upsertFavourite(
+      googleId,
+      favourite,
+    );
+
+    if (!result) {
+      throw new UserNotFoundException();
+    }
+
+    return result === 'added'
+      ? 'Favorite user added successfully'
+      : 'Favorite user updated successfully';
+  }
+
+  async removeFavourite(
+    googleId: string | undefined,
+    title: string,
+  ): Promise<string> {
+    if (!googleId) {
+      throw new UserNotFoundException();
+    }
+
+    const removed = await this.usersRepository.removeFavourite(googleId, title);
+
+    if (removed === null) {
+      throw new UserNotFoundException();
+    }
+    if (!removed) {
+      throw new FavouriteNotFoundException();
+    }
+
+    return 'Favorite removed successfully';
   }
 
   async update(
@@ -102,9 +144,7 @@ export class UsersService {
   ): Promise<User> {
     const deduped = [
       ...new Set(
-        disabledChannels.filter((c) =>
-          UsersService.VALID_CHANNELS.includes(c),
-        ),
+        disabledChannels.filter((c) => UsersService.VALID_CHANNELS.includes(c)),
       ),
     ];
 
@@ -114,7 +154,7 @@ export class UsersService {
     });
 
     if (!updated) {
-      throw new Error('Utilisateur non trouvé');
+      throw new UserNotFoundException();
     }
 
     return updated;

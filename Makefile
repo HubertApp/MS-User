@@ -10,7 +10,7 @@ lint:
 	$(NPM) run lint
 
 test:
-	$(NPM) test -- --coverage
+	$(NPM) run test-no-rabbitmq -- --coverage
 
 # sonar:
 # 	$(SCANNER) \

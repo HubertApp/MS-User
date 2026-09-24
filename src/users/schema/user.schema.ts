@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { FavouriteMongoose, FavouriteSchema } from './favourite.schema';
 
 export type UserDocument = HydratedDocument<UserMongooseSchema>;
 
@@ -22,6 +23,9 @@ export class UserMongooseSchema {
 
   @Prop({ type: String, nullable: true })
   role?: string;
+
+  @Prop({ type: [FavouriteSchema], default: [] })
+  favourites?: FavouriteMongoose[];
 
   @Prop({ type: [String], default: [] })
   notificationChannelsDisabled?: string[];
