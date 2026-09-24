@@ -1,7 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { UsersModule } from '../../src/users/users.module';
-import { UserMongooseSchema } from '../../src/users/schema/user.schema';
 
 // Couvre le fallback RABBITMQ_URL corrigé cette session
 // ('amqp://null' -> 'amqp://rabbitmq:5672') : sans lui, un pod dont le
