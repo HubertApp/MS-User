@@ -153,7 +153,10 @@ describe('Users integration tests', () => {
     // dans le payload, voir users.service.ts sendNotification().
     expect(mockNotifClient.emit).toHaveBeenCalledWith(
       'user_created',
-      expect.objectContaining({ user_id: userInput.googleId, email: userInput.email }),
+      expect.objectContaining({
+        user_id: userInput.googleId,
+        email: userInput.email,
+      }),
     );
   });
 
@@ -250,10 +253,7 @@ describe('Users integration tests', () => {
     expect(mockRepo.findById).toHaveBeenCalledWith(userPayload.googleId);
   });
 
-  it('should return an empty list from findAll query when there are no users', async () => {
-    mockRepo.findAll.mockResolvedValue([]);
-
-    const query = `
+  const findAllQuery = `
       query {
         findAll {
           googleId
@@ -265,14 +265,69 @@ describe('Users integration tests', () => {
       }
     `;
 
+  it('should return an empty list from findAll query when there are no users', async () => {
+    mockRepo.findAll.mockResolvedValue([]);
+
     const response = await request(app.getHttpServer())
       .post(graphqlEndpoint)
-      .send({ query })
+      .set('x-auth-state', 'VALID')
+      .set('x-user-id', 'google-admin')
+      .set('x-user-role', 'ADMIN')
+      .send({ query: findAllQuery })
       .expect(200);
 
     expect(response.body.errors).toBeUndefined();
     expect(response.body.data.findAll).toEqual([]);
     expect(mockRepo.findAll).toHaveBeenCalled();
+  });
+
+  it('should reject findAll with a 403 FORBIDDEN for a non-admin user', async () => {
+    mockRepo.findAll.mockResolvedValue([]);
+
+    const response = await request(app.getHttpServer())
+      .post(graphqlEndpoint)
+      .set('x-auth-state', 'VALID')
+      .set('x-user-id', 'google-123')
+      .set('x-user-role', 'USER')
+      .send({ query: findAllQuery });
+
+    expect(response.body.errors?.[0]?.extensions?.code).toBe('FORBIDDEN');
+    expect(mockRepo.findAll).not.toHaveBeenCalled();
+  });
+
+  it('should reject findAll with a 401 when no identity is supplied', async () => {
+    mockRepo.findAll.mockResolvedValue([]);
+
+    const response = await request(app.getHttpServer())
+      .post(graphqlEndpoint)
+      .send({ query: findAllQuery });
+
+    expect(response.body.errors?.[0]?.extensions?.code).toBe('UNAUTHENTICATED');
+    expect(mockRepo.findAll).not.toHaveBeenCalled();
+  });
+
+  // Régression : `role` était exposé dans UpdateUserInput et transmis tel quel
+  // au repository, donc n'importe quel utilisateur authentifié pouvait se
+  // promouvoir ADMIN. Le champ n'existe plus dans le schéma.
+  it('should refuse a role field in updateUser (privilege escalation)', async () => {
+    const mutation = `
+      mutation UpdateUser($input: UpdateUserInput!) {
+        updateUser(updateUserInput: $input)
+      }
+    `;
+
+    const response = await request(app.getHttpServer())
+      .post(graphqlEndpoint)
+      .set('x-auth-state', 'VALID')
+      .set('x-user-id', 'google-123')
+      .set('x-user-role', 'USER')
+      .send({
+        query: mutation,
+        variables: { input: { pseudo: 'escalade', role: 'ADMIN' } },
+      });
+
+    expect(response.body.errors?.[0]?.message).toMatch(/role/i);
+    expect(mockRepo.update).not.toHaveBeenCalled();
   });
 
   it('should update the authenticated user via updateUser mutation', async () => {
@@ -313,7 +368,9 @@ describe('Users integration tests', () => {
       .expect(200);
 
     expect(response.body.errors).toBeUndefined();
-    expect(response.body.data.updateUser).toBe('Utilisateur mis à jour avec succès');
+    expect(response.body.data.updateUser).toBe(
+      'Utilisateur mis à jour avec succès',
+    );
     expect(mockRepo.update).toHaveBeenCalledWith(
       userPayload.googleId,
       expect.objectContaining({
@@ -349,7 +406,9 @@ describe('Users integration tests', () => {
       .expect(200);
 
     expect(response.body.errors).toBeUndefined();
-    expect(response.body.data.removeUser).toBe('Utilisateur supprimé avec succès');
+    expect(response.body.data.removeUser).toBe(
+      'Utilisateur supprimé avec succès',
+    );
     expect(mockRepo.delete).toHaveBeenCalledWith('google-123');
   });
 

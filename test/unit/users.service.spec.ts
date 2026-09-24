@@ -4,6 +4,8 @@ import { UsersRepository } from '../../src/users/repository/users.repository';
 import { CreateUserInput } from '../../src/users/dto/create-user.input';
 import { UpdateUserInput } from '../../src/users/dto/update-user.input';
 import { User } from '../../src/users/entities/user.entity';
+import { UserNotFoundException } from '../../src/users/exception/user-not-found.exception';
+import { FavouriteNotFoundException } from '../../src/users/exception/favourite-not-found.exception';
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -39,6 +41,8 @@ const mockRepo = {
   findAll: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
+  upsertFavourite: jest.fn(),
+  removeFavourite: jest.fn(),
 };
 
 // emit() doit renvoyer un Observable (ou assimilé) avec .subscribe() : sans
@@ -162,7 +166,9 @@ describe('UsersService', () => {
     });
 
     it('should not erase photo in DB when input omits it (e.g. getMe)', async () => {
-      const existing = makeUser({ photo: 'https://example.com/existing.jpg' } as any);
+      const existing = makeUser({
+        photo: 'https://example.com/existing.jpg',
+      } as any);
       const input = makeCreateInput({ pseudo: 'same-ish' });
       delete (input as any).photo;
 
@@ -209,9 +215,19 @@ describe('UsersService', () => {
   // manquant dans le payload + emit() jamais subscribe() (Observable froid).
   describe('create -> sendNotification (nouvel utilisateur)', () => {
     it('should publish user_created with user_id (required by MS-notifications dispatch)', async () => {
-      const input = makeCreateInput({ googleId: 'google-new', email: 'new@test.com', pseudo: 'newbie' });
+      const input = makeCreateInput({
+        googleId: 'google-new',
+        email: 'new@test.com',
+        pseudo: 'newbie',
+      });
       mockRepo.findById.mockResolvedValue(null);
-      mockRepo.create.mockResolvedValue(makeUser({ googleId: 'google-new', email: 'new@test.com', pseudo: 'newbie' }));
+      mockRepo.create.mockResolvedValue(
+        makeUser({
+          googleId: 'google-new',
+          email: 'new@test.com',
+          pseudo: 'newbie',
+        }),
+      );
 
       await service.create(input);
 
@@ -241,9 +257,14 @@ describe('UsersService', () => {
     });
 
     it('should not publish when the new user has no email', async () => {
-      const input = makeCreateInput({ googleId: 'google-new', email: undefined as any });
+      const input = makeCreateInput({
+        googleId: 'google-new',
+        email: undefined as any,
+      });
       mockRepo.findById.mockResolvedValue(null);
-      mockRepo.create.mockResolvedValue(makeUser({ googleId: 'google-new', email: undefined as any }));
+      mockRepo.create.mockResolvedValue(
+        makeUser({ googleId: 'google-new', email: undefined as any }),
+      );
 
       await service.create(input);
 
@@ -395,7 +416,10 @@ describe('UsersService', () => {
     it('should persist a valid list of disabled channels', async () => {
       mockRepo.update.mockResolvedValue(makeUser());
 
-      await service.updateNotificationPreferences('google-123', ['EMAIL', 'IN_APP']);
+      await service.updateNotificationPreferences('google-123', [
+        'EMAIL',
+        'IN_APP',
+      ]);
 
       expect(mockRepo.update).toHaveBeenCalledWith(
         'google-123',
@@ -409,7 +433,10 @@ describe('UsersService', () => {
     it('should silently drop unknown channel values (defends against typos)', async () => {
       mockRepo.update.mockResolvedValue(makeUser());
 
-      await service.updateNotificationPreferences('google-123', ['EMAIL', 'SMS_TYPO']);
+      await service.updateNotificationPreferences('google-123', [
+        'EMAIL',
+        'SMS_TYPO',
+      ]);
 
       const patch = mockRepo.update.mock.calls[0][1];
       expect(patch.notificationChannelsDisabled).toEqual(['EMAIL']);
@@ -418,7 +445,10 @@ describe('UsersService', () => {
     it('should deduplicate repeated channel values', async () => {
       mockRepo.update.mockResolvedValue(makeUser());
 
-      await service.updateNotificationPreferences('google-123', ['EMAIL', 'EMAIL']);
+      await service.updateNotificationPreferences('google-123', [
+        'EMAIL',
+        'EMAIL',
+      ]);
 
       const patch = mockRepo.update.mock.calls[0][1];
       expect(patch.notificationChannelsDisabled).toEqual(['EMAIL']);
@@ -429,7 +459,91 @@ describe('UsersService', () => {
 
       await expect(
         service.updateNotificationPreferences('unknown', ['EMAIL']),
-      ).rejects.toThrow('Utilisateur non trouvé');
+      ).rejects.toBeInstanceOf(UserNotFoundException);
+    });
+
+    it('should surface a 404 USER_NOT_FOUND rather than a generic server error', async () => {
+      mockRepo.update.mockResolvedValue(null);
+
+      await expect(
+        service.updateNotificationPreferences('unknown', ['EMAIL']),
+      ).rejects.toMatchObject({
+        extensions: { code: 'USER_NOT_FOUND', http: { status: 404 } },
+      });
+    });
+  });
+
+  // ─────────────────────────────────────────────
+  describe('addFavourite', () => {
+    const favourite = {
+      title: 'Maison',
+      departure: { latitude: 48.85, longitude: 2.35, label: 'Paris' },
+    };
+
+    it('should delegate to the repository and report an addition', async () => {
+      mockRepo.upsertFavourite.mockResolvedValue('added');
+
+      const result = await service.addFavourite('google-123', favourite);
+
+      expect(mockRepo.upsertFavourite).toHaveBeenCalledWith(
+        'google-123',
+        favourite,
+      );
+      expect(result).toBe('Favorite user added successfully');
+    });
+
+    it('should report an update when the title already exists', async () => {
+      mockRepo.upsertFavourite.mockResolvedValue('updated');
+
+      await expect(service.addFavourite('google-123', favourite)).resolves.toBe(
+        'Favorite user updated successfully',
+      );
+    });
+
+    it('should throw UserNotFoundException when the user does not exist', async () => {
+      mockRepo.upsertFavourite.mockResolvedValue(null);
+
+      await expect(
+        service.addFavourite('unknown', favourite),
+      ).rejects.toBeInstanceOf(UserNotFoundException);
+    });
+
+    it('should throw without hitting the DB when googleId is missing', async () => {
+      await expect(
+        service.addFavourite(undefined, favourite),
+      ).rejects.toBeInstanceOf(UserNotFoundException);
+      expect(mockRepo.upsertFavourite).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─────────────────────────────────────────────
+  describe('removeFavourite', () => {
+    it('should remove an existing favourite', async () => {
+      mockRepo.removeFavourite.mockResolvedValue(true);
+
+      await expect(
+        service.removeFavourite('google-123', 'Maison'),
+      ).resolves.toBe('Favorite removed successfully');
+      expect(mockRepo.removeFavourite).toHaveBeenCalledWith(
+        'google-123',
+        'Maison',
+      );
+    });
+
+    it('should throw FavouriteNotFoundException when the title is unknown', async () => {
+      mockRepo.removeFavourite.mockResolvedValue(false);
+
+      await expect(
+        service.removeFavourite('google-123', 'Inconnu'),
+      ).rejects.toBeInstanceOf(FavouriteNotFoundException);
+    });
+
+    it('should throw UserNotFoundException when the user does not exist', async () => {
+      mockRepo.removeFavourite.mockResolvedValue(null);
+
+      await expect(
+        service.removeFavourite('unknown', 'Maison'),
+      ).rejects.toBeInstanceOf(UserNotFoundException);
     });
   });
 });

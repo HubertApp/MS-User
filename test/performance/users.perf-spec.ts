@@ -86,7 +86,9 @@ describe('MS-User (performance)', () => {
       // publication vers NOTIF_SERVICE est fire-and-forget (non-bloquante,
       // voir sendNotification()) donc ne doit pas s'ajouter à la latence.
       const maxAcceptableMs =
-        CONCURRENCY * (SIMULATED_DB_READ_LATENCY_MS + SIMULATED_DB_WRITE_LATENCY_MS) * 10;
+        CONCURRENCY *
+        (SIMULATED_DB_READ_LATENCY_MS + SIMULATED_DB_WRITE_LATENCY_MS) *
+        10;
       expect(elapsedMs).toBeLessThan(maxAcceptableMs);
       expect(mockRepo.create).toHaveBeenCalledTimes(CONCURRENCY);
     }, 20000);
@@ -136,7 +138,10 @@ describe('MS-User (performance)', () => {
         providers: [
           UsersService,
           { provide: UsersRepository, useValue: mockRepo },
-          { provide: 'NOTIF_SERVICE', useValue: { emit: jest.fn(() => ({ subscribe: jest.fn() })) } },
+          {
+            provide: 'NOTIF_SERVICE',
+            useValue: { emit: jest.fn(() => ({ subscribe: jest.fn() })) },
+          },
         ],
       }).compile();
 

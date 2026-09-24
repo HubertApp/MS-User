@@ -8,6 +8,9 @@ import {
 } from '@nestjs/apollo';
 import { MongooseModule } from '@nestjs/mongoose';
 import { OpenTelemetryModule } from 'nestjs-otel';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { GqlThrottlerGuard } from './common/guards/gql-throttler.guard';
 
 @Module({
   imports: [
@@ -30,9 +33,22 @@ import { OpenTelemetryModule } from 'nestjs-otel';
     MongooseModule.forRoot(
       process.env.MONGO_URL || 'mongodb://localhost:27017/hubertapp_users',
     ),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60000,
+          limit: 100,
+        },
+      ],
+    }),
     UsersModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: GqlThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

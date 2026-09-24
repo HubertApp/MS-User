@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UsersResolver } from '../../src/users/users.resolver';
 import { UsersService } from '../../src/users/users.service';
 import { User } from '../../src/users/entities/user.entity';
+import { UserNotFoundException } from '../../src/users/exception/user-not-found.exception';
 
 const makeUser = (overrides: Partial<User> = {}): User => ({
   googleId: 'google-123',
@@ -144,12 +145,41 @@ describe('UsersResolver', () => {
       expect(mockService.findOne).toHaveBeenCalledWith('google-123');
     });
 
-    it('should return error message when not found', async () => {
+    it('should throw a typed USER_NOT_FOUND error instead of returning false', async () => {
       mockService.findOne.mockResolvedValue(false);
 
-      const result = await resolver.findOne('unknown');
+      await expect(resolver.findOne('unknown')).rejects.toBeInstanceOf(
+        UserNotFoundException,
+      );
+    });
 
-      expect(result).toBe(false);
+    it('should expose a 404 USER_NOT_FOUND rather than a non-nullable field error', async () => {
+      mockService.findOne.mockResolvedValue(false);
+
+      await expect(resolver.findOne('unknown')).rejects.toMatchObject({
+        message: 'Utilisateur introuvable',
+        extensions: { code: 'USER_NOT_FOUND', http: { status: 404 } },
+      });
+    });
+  });
+
+  describe('getOne', () => {
+    it('should return the authenticated user when found', async () => {
+      const user = makeUser();
+      mockService.findOne.mockResolvedValue(user);
+
+      const result = await resolver.getOne(makeCurrentUser());
+
+      expect(result).toEqual(user);
+      expect(mockService.findOne).toHaveBeenCalledWith('google-123');
+    });
+
+    it('should throw a typed USER_NOT_FOUND error when the user is unknown', async () => {
+      mockService.findOne.mockResolvedValue(false);
+
+      await expect(resolver.getOne(makeCurrentUser())).rejects.toBeInstanceOf(
+        UserNotFoundException,
+      );
     });
   });
 
