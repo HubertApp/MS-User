@@ -21,8 +21,8 @@ export class GetUserResponse {
   @Field(() => String, { nullable: true })
   role?: string;
 
-  @Field(() => [Favourite], {nullable: true})
-  favourites? : Favourite[];
+  @Field(() => [Favourite], { nullable: true })
+  favourites?: Favourite[];
 
   @Field(() => [String], { nullable: true })
   notificationChannelsDisabled?: string[];

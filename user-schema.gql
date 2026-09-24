@@ -18,10 +18,31 @@ A date-time string at UTC, such as 2019-12-03T09:54:33Z, compliant with the date
 """
 scalar DateTime
 
+type Favourite {
+  arrival: LocationEntity
+  created_at: DateTime
+  departure: LocationEntity
+  title: String!
+  updated_at: DateTime
+}
+
+input FavouriteUserInput {
+  arrival: LocationInput
+
+  """Ignoré, renseigné par le serveur"""
+  created_at: DateTime
+  departure: LocationInput
+  title: String!
+
+  """Ignoré, renseigné par le serveur"""
+  updated_at: DateTime
+}
+
 type GetUserResponse {
   age: Int
   created_at: DateTime
   email: String
+  favourites: [Favourite!]
   googleId: ID!
   notificationChannelsDisabled: [String!]
   photo: String
@@ -30,8 +51,22 @@ type GetUserResponse {
   updated_at: DateTime
 }
 
+type LocationEntity {
+  label: String!
+  latitude: Float!
+  longitude: Float!
+}
+
+input LocationInput {
+  label: String!
+  latitude: Float!
+  longitude: Float!
+}
+
 type Mutation {
+  addFavourite(favouriteId: FavouriteUserInput!): String!
   createUser(createUserInput: CreateUserInput!): GetUserResponse!
+  removeFavourite(title: String!): String!
   removeUser: String!
   updateNotificationPreferences(disabledChannels: [String!]!): GetUserResponse!
   updateUser(updateUserInput: UpdateUserInput!): String!

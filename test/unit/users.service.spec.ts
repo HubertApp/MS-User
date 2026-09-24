@@ -5,6 +5,7 @@ import { CreateUserInput } from '../../src/users/dto/create-user.input';
 import { UpdateUserInput } from '../../src/users/dto/update-user.input';
 import { User } from '../../src/users/entities/user.entity';
 import { UserNotFoundException } from '../../src/users/exception/user-not-found.exception';
+import { FavouriteNotFoundException } from '../../src/users/exception/favourite-not-found.exception';
 
 // ─────────────────────────────────────────────
 // Helpers
@@ -40,6 +41,8 @@ const mockRepo = {
   findAll: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
+  upsertFavourite: jest.fn(),
+  removeFavourite: jest.fn(),
 };
 
 // emit() doit renvoyer un Observable (ou assimilé) avec .subscribe() : sans
@@ -467,6 +470,80 @@ describe('UsersService', () => {
       ).rejects.toMatchObject({
         extensions: { code: 'USER_NOT_FOUND', http: { status: 404 } },
       });
+    });
+  });
+
+  // ─────────────────────────────────────────────
+  describe('addFavourite', () => {
+    const favourite = {
+      title: 'Maison',
+      departure: { latitude: 48.85, longitude: 2.35, label: 'Paris' },
+    };
+
+    it('should delegate to the repository and report an addition', async () => {
+      mockRepo.upsertFavourite.mockResolvedValue('added');
+
+      const result = await service.addFavourite('google-123', favourite);
+
+      expect(mockRepo.upsertFavourite).toHaveBeenCalledWith(
+        'google-123',
+        favourite,
+      );
+      expect(result).toBe('Favorite user added successfully');
+    });
+
+    it('should report an update when the title already exists', async () => {
+      mockRepo.upsertFavourite.mockResolvedValue('updated');
+
+      await expect(service.addFavourite('google-123', favourite)).resolves.toBe(
+        'Favorite user updated successfully',
+      );
+    });
+
+    it('should throw UserNotFoundException when the user does not exist', async () => {
+      mockRepo.upsertFavourite.mockResolvedValue(null);
+
+      await expect(
+        service.addFavourite('unknown', favourite),
+      ).rejects.toBeInstanceOf(UserNotFoundException);
+    });
+
+    it('should throw without hitting the DB when googleId is missing', async () => {
+      await expect(
+        service.addFavourite(undefined, favourite),
+      ).rejects.toBeInstanceOf(UserNotFoundException);
+      expect(mockRepo.upsertFavourite).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─────────────────────────────────────────────
+  describe('removeFavourite', () => {
+    it('should remove an existing favourite', async () => {
+      mockRepo.removeFavourite.mockResolvedValue(true);
+
+      await expect(
+        service.removeFavourite('google-123', 'Maison'),
+      ).resolves.toBe('Favorite removed successfully');
+      expect(mockRepo.removeFavourite).toHaveBeenCalledWith(
+        'google-123',
+        'Maison',
+      );
+    });
+
+    it('should throw FavouriteNotFoundException when the title is unknown', async () => {
+      mockRepo.removeFavourite.mockResolvedValue(false);
+
+      await expect(
+        service.removeFavourite('google-123', 'Inconnu'),
+      ).rejects.toBeInstanceOf(FavouriteNotFoundException);
+    });
+
+    it('should throw UserNotFoundException when the user does not exist', async () => {
+      mockRepo.removeFavourite.mockResolvedValue(null);
+
+      await expect(
+        service.removeFavourite('unknown', 'Maison'),
+      ).rejects.toBeInstanceOf(UserNotFoundException);
     });
   });
 });
