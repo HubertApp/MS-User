@@ -9,7 +9,7 @@ import { getModelToken } from '@nestjs/mongoose';
 // process.env.RABBITMQ_URL est lu une seule fois, au chargement du module
 // (ClientsModule.register() n'est pas ré-évalué à la demande) -- comme dans
 // la vraie appli (un pod ne change pas ses env vars après démarrage). Donc
-// jest.resetModules() + require() dynamique est nécessaire pour forcer une
+// jest.resetModules() + import() dynamique est nécessaire pour forcer une
 // relecture entre les deux scénarios de ce fichier.
 describe('UsersModule (RABBITMQ_URL fallback)', () => {
   const ORIGINAL_ENV = process.env.RABBITMQ_URL;
