@@ -15,9 +15,9 @@ import { FavouriteUserInput } from './dto/favourite-user.input';
 @Resolver(() => GetUserResponse)
 export class UsersResolver {
   private readonly logger = new Logger(UsersService.name);
-  
+
   constructor(private readonly usersService: UsersService) {}
-  
+
   @Query(() => GetUserResponse)
   @Span('getMe_resolver')
   @UseGuards(FederatedAuthGuard)
@@ -98,10 +98,20 @@ export class UsersResolver {
   async addFavourite(
     @CurrentUser() user: CreateUserInput,
     @Args('favouriteId') favouriteId: FavouriteUserInput,
-    ): Promise<string> {
-      return this.usersService.addFavourite(user.googleId, favouriteId);
-    }
-  
+  ): Promise<string> {
+    return this.usersService.addFavourite(user.googleId, favouriteId);
+  }
+
+  @Span('removeFavourite_resolver')
+  @UseGuards(FederatedAuthGuard)
+  @Mutation(() => String)
+  async removeFavourite(
+    @CurrentUser() user: CreateUserInput,
+    @Args('title') title: string,
+  ): Promise<string> {
+    return this.usersService.removeFavourite(user.googleId, title);
+  }
+
   // Même principe que removeUser/updateUser : googleId vient uniquement de
   // @CurrentUser(), jamais d'un argument client (IDOR).
   @Span('updateNotificationPreferences_resolver')

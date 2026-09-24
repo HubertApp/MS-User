@@ -15,7 +15,6 @@ export class FederatedAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token invalide');
     }
 
-
     ctx.req.user = {
       googleId: String(userId),
       email: headers['x-user-email']

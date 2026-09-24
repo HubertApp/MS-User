@@ -52,11 +52,21 @@ describe('FederatedAuthGuard', () => {
       expect(guard.canActivate(executionContext)).toBe(true);
     });
 
-    it('should return true when no auth state header but user ID is present', () => {
-      mockGqlCtx.getContext.mockReturnValue(
-        makeContext({ 'x-user-id': 'google-123' }),
-      );
-      expect(guard.canActivate(executionContext)).toBe(true);
+    it('should populate req.user from the gateway headers', () => {
+      const ctx = makeContext({
+        'x-auth-state': 'VALID',
+        'x-user-id': 'google-123',
+        'x-user-email': 'test@example.com',
+      });
+      mockGqlCtx.getContext.mockReturnValue(ctx);
+
+      guard.canActivate(executionContext);
+
+      expect((ctx.req as any).user).toMatchObject({
+        googleId: 'google-123',
+        email: 'test@example.com',
+        role: 'USER',
+      });
     });
 
     it('should call GqlExecutionContext.create with execution context', () => {
@@ -106,31 +116,42 @@ describe('FederatedAuthGuard', () => {
     });
   });
 
+  describe('Missing auth state', () => {
+    it('should throw "Token invalide" when x-auth-state is absent', () => {
+      mockGqlCtx.getContext.mockReturnValue(
+        makeContext({ 'x-user-id': 'google-123' }),
+      );
+      expect(() => guard.canActivate(executionContext)).toThrow(
+        'Token invalide',
+      );
+    });
+  });
+
   describe('Missing user ID', () => {
-    it('should throw "Connexion requise !" when x-user-id is absent', () => {
+    it('should throw "Token invalide" when x-user-id is absent', () => {
       mockGqlCtx.getContext.mockReturnValue(
         makeContext({ 'x-auth-state': 'VALID' }),
       );
       expect(() => guard.canActivate(executionContext)).toThrow(
-        'Connexion requise !',
+        'Token invalide',
       );
     });
 
-    it('should throw "Connexion requise !" when x-user-id is empty string', () => {
+    it('should throw "Token invalide" when x-user-id is empty string', () => {
       mockGqlCtx.getContext.mockReturnValue(
         makeContext({ 'x-auth-state': 'VALID', 'x-user-id': '' }),
       );
       expect(() => guard.canActivate(executionContext)).toThrow(
-        'Connexion requise !',
+        'Token invalide',
       );
     });
 
-    it('should throw "Connexion requise !" for uppercase headers', () => {
+    it('should throw "Token invalide" for uppercase header keys', () => {
       mockGqlCtx.getContext.mockReturnValue(
         makeContext({ 'X-USER-ID': 'google-123', 'X-AUTH-STATE': 'VALID' }),
       );
       expect(() => guard.canActivate(executionContext)).toThrow(
-        'Connexion requise !',
+        'Token invalide',
       );
     });
   });

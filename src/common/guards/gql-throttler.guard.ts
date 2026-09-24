@@ -11,7 +11,7 @@ export class GqlThrottlerGuard extends ThrottlerGuard {
     return { req: ctx.req, res: ctx.res ?? noopRes };
   }
 
-  protected async getTracker(req: Record<string, any>): Promise<string> {
-    return (req.headers?.['x-user-id'] as string) || req.ip;
+  protected getTracker(req: Record<string, any>): Promise<string> {
+    return Promise.resolve((req.headers?.['x-user-id'] as string) || req.ip);
   }
 }

@@ -1,32 +1,48 @@
-//Tableau de favoris contenant un départ et une arrivée, avec départ/arrivée étant un tableau latitudide/longitude. Le tableau de favoris est trié par ordre chronologique d'ajout.
-
 import { Field, InputType } from '@nestjs/graphql';
-import { IsArray, IsLatitude, IsLongitude, IsString, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  MaxLength,
+  IsOptional,
+  ValidateNested,
+  IsDate,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { LocationInput } from './location.input';
 
 @InputType()
 export class FavouriteUserInput {
+  @Field(() => String)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  title!: string;
 
-    @Field(() => String)
-    @IsString()
-    @MaxLength(64)
-    userId?: string;
+  @Field(() => LocationInput, { nullable: true })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LocationInput)
+  departure?: LocationInput;
 
-    @Field(() => String)
-    @IsString()
-    @MaxLength(100)
-    title?: string;
+  @Field(() => LocationInput, { nullable: true })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LocationInput)
+  arrival?: LocationInput;
 
-    @Field(() => [Number])
-    @IsArray()
-    @IsLatitude({ each: true })
-    @IsLongitude({ each: true })
-    coordinatesDeparture?: [number, number];
+  @Field(() => Date, {
+    nullable: true,
+    description: 'Ignoré, renseigné par le serveur',
+  })
+  @IsOptional()
+  @IsDate()
+  created_at?: Date;
 
-    @Field(() => [Number])
-    @IsArray()
-    @IsLatitude({ each: true })
-    @IsLongitude({ each: true })
-    coordinatesArrival?: [number, number];
-
-
+  @Field(() => Date, {
+    nullable: true,
+    description: 'Ignoré, renseigné par le serveur',
+  })
+  @IsOptional()
+  @IsDate()
+  updated_at?: Date;
 }

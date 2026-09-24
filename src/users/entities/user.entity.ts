@@ -22,8 +22,8 @@ export class User {
   @Field(() => String, { nullable: true })
   role?: string;
 
-  @Field(() => [Favourite], {nullable: true})
-  favourites? : Favourite[];
+  @Field(() => [Favourite], { nullable: true })
+  favourites?: Favourite[];
 
   // Canaux de notification que l'utilisateur a désactivés (ex: "EMAIL",
   // "IN_APP"). Jamais synchronisé depuis Google, voir syncProfile() dans

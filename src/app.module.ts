@@ -47,7 +47,7 @@ import { GqlThrottlerGuard } from './common/guards/gql-throttler.guard';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: GqlThrottlerGuard
+      useClass: GqlThrottlerGuard,
     },
   ],
 })
