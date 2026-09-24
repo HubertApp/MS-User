@@ -32,6 +32,7 @@ const mockService = {
   update: jest.fn(),
   remove: jest.fn(),
   updateNotificationPreferences: jest.fn(),
+  unsubscribeFromEmails: jest.fn(),
 };
 
 describe('UsersResolver', () => {
@@ -210,6 +211,31 @@ describe('UsersResolver', () => {
 
     it('should never be callable with a raw googleId argument (only disabledChannels + current user)', () => {
       expect(resolver.updateNotificationPreferences.length).toBe(2);
+    });
+  });
+
+  describe('unsubscribeFromEmails', () => {
+    it('should call service with the googleId passed as argument', async () => {
+      mockService.unsubscribeFromEmails.mockResolvedValue(true);
+
+      const result = await resolver.unsubscribeFromEmails('google-123');
+
+      expect(mockService.unsubscribeFromEmails).toHaveBeenCalledWith(
+        'google-123',
+      );
+      expect(result).toBe(true);
+    });
+
+    it('should return false when the service reports no matching user', async () => {
+      mockService.unsubscribeFromEmails.mockResolvedValue(false);
+
+      const result = await resolver.unsubscribeFromEmails('unknown-id');
+
+      expect(result).toBe(false);
+    });
+
+    it('should not be guarded by FederatedAuthGuard (only one argument, no @CurrentUser())', () => {
+      expect(resolver.unsubscribeFromEmails.length).toBe(1);
     });
   });
 });
