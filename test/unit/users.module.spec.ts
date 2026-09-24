@@ -1,7 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { UsersModule } from '../../src/users/users.module';
-import { UserMongooseSchema } from '../../src/users/schema/user.schema';
 
 // Couvre le fallback RABBITMQ_URL corrigé cette session
 // ('amqp://null' -> 'amqp://rabbitmq:5672') : sans lui, un pod dont le
@@ -11,7 +9,7 @@ import { UserMongooseSchema } from '../../src/users/schema/user.schema';
 // process.env.RABBITMQ_URL est lu une seule fois, au chargement du module
 // (ClientsModule.register() n'est pas ré-évalué à la demande) -- comme dans
 // la vraie appli (un pod ne change pas ses env vars après démarrage). Donc
-// jest.resetModules() + require() dynamique est nécessaire pour forcer une
+// jest.resetModules() + import() dynamique est nécessaire pour forcer une
 // relecture entre les deux scénarios de ce fichier.
 describe('UsersModule (RABBITMQ_URL fallback)', () => {
   const ORIGINAL_ENV = process.env.RABBITMQ_URL;
@@ -26,6 +24,10 @@ describe('UsersModule (RABBITMQ_URL fallback)', () => {
 
   async function compileModuleWithFreshEnv(): Promise<TestingModule> {
     jest.resetModules();
+    const { UsersModule } = await import('../../src/users/users.module');
+    const { UserMongooseSchema } = await import(
+      '../../src/users/schema/user.schema'
+    );
 
     return Test.createTestingModule({
       imports: [UsersModule],

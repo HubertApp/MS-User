@@ -160,6 +160,22 @@ export class UsersService {
     return updated;
   }
 
+  async unsubscribeFromEmails(googleId: string | undefined): Promise<boolean> {
+    const user = await this.usersRepository.findById(googleId);
+    if (!user) return false;
+
+    const merged = [
+      ...new Set([...(user.notificationChannelsDisabled ?? []), 'EMAIL']),
+    ];
+
+    const updated = await this.usersRepository.update(googleId, {
+      notificationChannelsDisabled: merged,
+      updated_at: new Date(),
+    });
+
+    return Boolean(updated);
+  }
+
   // MS-notifications (EventPattern 'user_created') ne déclenche l'envoi que
   // si data.user_id ET data.email sont présents — user_id est donc
   // obligatoire ici, pas juste un bonus.

@@ -127,4 +127,12 @@ export class UsersResolver {
       disabledChannels,
     );
   }
+
+  @Span('unsubscribeFromEmails_resolver')
+  @Mutation(() => Boolean)
+  async unsubscribeFromEmails(
+    @Args('googleId') googleId: string,
+  ): Promise<boolean> {
+    return this.usersService.unsubscribeFromEmails(googleId);
+  }
 }
