@@ -128,6 +128,10 @@ export class UsersService {
   }
 
   async remove(googleId: string | undefined): Promise<string> {
+    const user = await this.usersRepository.findById(googleId);
+
+    this.sendAccountDeletedNotification(user);
+
     await this.usersRepository.delete(googleId);
     return 'Utilisateur supprimé avec succès';
   }
@@ -182,33 +186,44 @@ export class UsersService {
   private sendNotification(user: any) {
     if (!user.googleId || !user.email) return;
 
-    const payload = {
+    this.publishEvent('user_created', {
       user_id: user.googleId,
       email: user.email,
       pseudo: user.pseudo,
       subject: 'Bienvenue sur Hubert App !',
       template: 'welcome',
-    };
+    });
+  }
 
-    // emit() renvoie un Observable froid : sans subscribe(), rien n'est
-    // publié du tout (piège classique NestJS/RxJS). Fire-and-forget : une
-    // erreur de publication ne doit jamais faire échouer la création du
-    // compte, déjà persisté à ce stade.
-    try {
-      this.notifClient.emit('user_created', payload).subscribe({
-        error: (err) =>
-          this.logger.warn(
-            `Échec de publication de user_created pour ${user.googleId} : ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          ),
-      });
-    } catch (err) {
+  // Émis juste avant la suppression effective (voir remove() ci-dessus).
+  private sendAccountDeletedNotification(user: User | null | undefined) {
+    if (!user?.googleId || !user.email) return;
+
+    this.publishEvent('user_deleted', {
+      user_id: user.googleId,
+      email: user.email,
+      pseudo: user.pseudo,
+      subject: 'Votre compte HubertApp a bien été supprimé',
+      template: 'account_deleted',
+    });
+  }
+
+  // emit() renvoie un Observable froid : sans subscribe(), rien n'est publié du tout.
+  private publishEvent(
+    pattern: string,
+    payload: { user_id: string; [key: string]: unknown },
+  ): void {
+    const onError = (err: unknown) =>
       this.logger.warn(
-        `Échec de publication de user_created pour ${user.googleId} : ${
+        `Échec de publication de ${pattern} pour ${payload.user_id} : ${
           err instanceof Error ? err.message : String(err)
         }`,
       );
+
+    try {
+      this.notifClient.emit(pattern, payload).subscribe({ error: onError });
+    } catch (err) {
+      onError(err);
     }
   }
 }
