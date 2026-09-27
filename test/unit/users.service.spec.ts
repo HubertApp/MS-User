@@ -239,6 +239,7 @@ describe('UsersService', () => {
           pseudo: 'newbie',
           subject: expect.any(String),
           template: 'welcome',
+          disabledChannels: [],
         }),
       );
     });
@@ -283,6 +284,25 @@ describe('UsersService', () => {
       const result = await service.create(input);
 
       expect(result).toEqual(created);
+    });
+
+    it('should include disabledChannels when user has notification channels disabled', async () => {
+      const input = makeCreateInput({ googleId: 'google-new' });
+      const created = makeUser({
+        googleId: 'google-new',
+        notificationChannelsDisabled: ['EMAIL', 'SMS'],
+      });
+      mockRepo.findById.mockResolvedValue(null);
+      mockRepo.create.mockResolvedValue(created);
+
+      await service.create(input);
+
+      expect(mockNotifClient.emit).toHaveBeenCalledWith(
+        'user_created',
+        expect.objectContaining({
+          disabledChannels: ['EMAIL', 'SMS'],
+        }),
+      );
     });
   });
 
@@ -394,6 +414,7 @@ describe('UsersService', () => {
   // ─────────────────────────────────────────────
   describe('remove', () => {
     it('should return success message after deletion', async () => {
+      mockRepo.findById.mockResolvedValue(null);
       mockRepo.delete.mockResolvedValue(true);
 
       const result = await service.remove('google-123');
@@ -403,11 +424,120 @@ describe('UsersService', () => {
     });
 
     it('should propagate repository errors', async () => {
+      mockRepo.findById.mockResolvedValue(null);
       mockRepo.delete.mockRejectedValue(new Error('Delete failed'));
 
       await expect(service.remove('google-123')).rejects.toThrow(
         'Delete failed',
       );
+    });
+
+    // sendAccountDeletedNotification() est privée, déclenchée uniquement à la
+    // suppression d'un compte. L'utilisateur doit être récupéré AVANT la
+    // suppression.
+    describe('-> sendAccountDeletedNotification', () => {
+      it('should publish user_deleted with the email fetched before deletion', async () => {
+        const user = makeUser({
+          googleId: 'google-123',
+          email: 'bye@test.com',
+          pseudo: 'partant',
+        });
+        mockRepo.findById.mockResolvedValue(user);
+        mockRepo.delete.mockResolvedValue(true);
+
+        await service.remove('google-123');
+
+        expect(mockRepo.findById).toHaveBeenCalledWith('google-123');
+        expect(mockNotifClient.emit).toHaveBeenCalledWith(
+          'user_deleted',
+          expect.objectContaining({
+            user_id: 'google-123',
+            email: 'bye@test.com',
+            pseudo: 'partant',
+            subject: expect.any(String),
+            template: 'account_deleted',
+            disabledChannels: [],
+          }),
+        );
+      });
+
+      it('should call findById before delete (email still needed at that point)', async () => {
+        const callOrder: string[] = [];
+        mockRepo.findById.mockImplementation(() => {
+          callOrder.push('findById');
+          return makeUser();
+        });
+        mockRepo.delete.mockImplementation(() => {
+          callOrder.push('delete');
+          return true;
+        });
+
+        await service.remove('google-123');
+
+        expect(callOrder).toEqual(['findById', 'delete']);
+      });
+
+      it('should subscribe to the emitted Observable (emit() alone publishes nothing)', async () => {
+        mockRepo.findById.mockResolvedValue(makeUser());
+        mockRepo.delete.mockResolvedValue(true);
+
+        await service.remove('google-123');
+
+        expect(mockSubscribe).toHaveBeenCalledWith(
+          expect.objectContaining({ error: expect.any(Function) }),
+        );
+      });
+
+      it('should not publish when the user is not found (nothing to notify)', async () => {
+        mockRepo.findById.mockResolvedValue(null);
+        mockRepo.delete.mockResolvedValue(true);
+
+        await service.remove('unknown');
+
+        expect(mockNotifClient.emit).not.toHaveBeenCalled();
+      });
+
+      it('should not publish when the found user has no email', async () => {
+        mockRepo.findById.mockResolvedValue(
+          makeUser({ email: undefined as any }),
+        );
+        mockRepo.delete.mockResolvedValue(true);
+
+        await service.remove('google-123');
+
+        expect(mockNotifClient.emit).not.toHaveBeenCalled();
+      });
+
+      it('should still delete the account even if publishing fails synchronously', async () => {
+        mockRepo.findById.mockResolvedValue(makeUser());
+        mockRepo.delete.mockResolvedValue(true);
+        mockNotifClient.emit.mockImplementationOnce(() => {
+          throw new Error('broker unreachable');
+        });
+
+        const result = await service.remove('google-123');
+
+        expect(result).toBe('Utilisateur supprimé avec succès');
+        expect(mockRepo.delete).toHaveBeenCalledWith('google-123');
+      });
+
+      it('should include disabledChannels when user has notification channels disabled', async () => {
+        const user = makeUser({
+          googleId: 'google-123',
+          notificationChannelsDisabled: ['EMAIL'],
+        });
+        mockRepo.findById.mockResolvedValue(user);
+        mockRepo.delete.mockResolvedValue(true);
+
+        await service.remove('google-123');
+
+        expect(mockNotifClient.emit).toHaveBeenCalledWith(
+          'user_deleted',
+          expect.objectContaining({
+            disabledChannels: ['EMAIL'],
+          }),
+        );
+      });
     });
   });
 

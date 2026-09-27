@@ -9,8 +9,9 @@ import { getModelToken } from '@nestjs/mongoose';
 // process.env.RABBITMQ_URL est lu une seule fois, au chargement du module
 // (ClientsModule.register() n'est pas ré-évalué à la demande) -- comme dans
 // la vraie appli (un pod ne change pas ses env vars après démarrage). Donc
-// jest.resetModules() + import() dynamique est nécessaire pour forcer une
-// relecture entre les deux scénarios de ce fichier.
+// jest.resetModules() + require() dynamique est nécessaire pour forcer une
+// relecture entre les deux scénarios de ce fichier (un import() dynamique
+// échoue ici : Jest exigerait --experimental-vm-modules pour l'ESM natif).
 describe('UsersModule (RABBITMQ_URL fallback)', () => {
   const ORIGINAL_ENV = process.env.RABBITMQ_URL;
 
@@ -24,10 +25,12 @@ describe('UsersModule (RABBITMQ_URL fallback)', () => {
 
   async function compileModuleWithFreshEnv(): Promise<TestingModule> {
     jest.resetModules();
-    const { UsersModule } = await import('../../src/users/users.module');
-    const { UserMongooseSchema } = await import(
-      '../../src/users/schema/user.schema'
-    );
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    const { UsersModule } = require('../../src/users/users.module');
+    const {
+      UserMongooseSchema,
+    } = require('../../src/users/schema/user.schema');
+    /* eslint-enable @typescript-eslint/no-require-imports */
 
     return Test.createTestingModule({
       imports: [UsersModule],
