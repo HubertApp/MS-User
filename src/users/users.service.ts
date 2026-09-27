@@ -192,6 +192,7 @@ export class UsersService {
       pseudo: user.pseudo,
       subject: 'Bienvenue sur Hubert App !',
       template: 'welcome',
+      disabledChannels: user.notificationChannelsDisabled ?? [],
     });
   }
 
@@ -205,6 +206,7 @@ export class UsersService {
       pseudo: user.pseudo,
       subject: 'Votre compte HubertApp a bien été supprimé',
       template: 'account_deleted',
+      disabledChannels: user.notificationChannelsDisabled ?? [],
     });
   }
 

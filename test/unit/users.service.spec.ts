@@ -239,6 +239,7 @@ describe('UsersService', () => {
           pseudo: 'newbie',
           subject: expect.any(String),
           template: 'welcome',
+          disabledChannels: [],
         }),
       );
     });
@@ -283,6 +284,25 @@ describe('UsersService', () => {
       const result = await service.create(input);
 
       expect(result).toEqual(created);
+    });
+
+    it('should include disabledChannels when user has notification channels disabled', async () => {
+      const input = makeCreateInput({ googleId: 'google-new' });
+      const created = makeUser({
+        googleId: 'google-new',
+        notificationChannelsDisabled: ['EMAIL', 'SMS'],
+      });
+      mockRepo.findById.mockResolvedValue(null);
+      mockRepo.create.mockResolvedValue(created);
+
+      await service.create(input);
+
+      expect(mockNotifClient.emit).toHaveBeenCalledWith(
+        'user_created',
+        expect.objectContaining({
+          disabledChannels: ['EMAIL', 'SMS'],
+        }),
+      );
     });
   });
 
@@ -436,6 +456,7 @@ describe('UsersService', () => {
             pseudo: 'partant',
             subject: expect.any(String),
             template: 'account_deleted',
+            disabledChannels: [],
           }),
         );
       });
@@ -498,6 +519,24 @@ describe('UsersService', () => {
 
         expect(result).toBe('Utilisateur supprimé avec succès');
         expect(mockRepo.delete).toHaveBeenCalledWith('google-123');
+      });
+
+      it('should include disabledChannels when user has notification channels disabled', async () => {
+        const user = makeUser({
+          googleId: 'google-123',
+          notificationChannelsDisabled: ['EMAIL'],
+        });
+        mockRepo.findById.mockResolvedValue(user);
+        mockRepo.delete.mockResolvedValue(true);
+
+        await service.remove('google-123');
+
+        expect(mockNotifClient.emit).toHaveBeenCalledWith(
+          'user_deleted',
+          expect.objectContaining({
+            disabledChannels: ['EMAIL'],
+          }),
+        );
       });
     });
   });
